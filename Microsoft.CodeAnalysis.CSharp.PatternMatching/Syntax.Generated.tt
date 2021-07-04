@@ -408,6 +408,7 @@ private static bool ConsiderTokenField(string name, string type)
     {
         case "Identifier":
         case "Modifiers":
+        case "Name":
             return true;
         case "Comma":
         case "Commas":

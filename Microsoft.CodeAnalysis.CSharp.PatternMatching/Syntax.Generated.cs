@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 {
+    // #13
     public abstract partial class NamePattern : TypePattern
     {
 
@@ -27,6 +28,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #18
     public abstract partial class SimpleNamePattern : NamePattern
     {
         private readonly string _identifier;
@@ -50,6 +52,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #29
     public partial class IdentifierNamePattern : SimpleNamePattern
     {
         private readonly Action<IdentifierNameSyntax> _action;
@@ -81,6 +84,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #45
     public partial class QualifiedNamePattern : NamePattern
     {
         private readonly NamePattern _left;
@@ -123,6 +127,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #70
     public partial class GenericNamePattern : SimpleNamePattern
     {
         private readonly TypeArgumentListPattern _typeArgumentList;
@@ -160,6 +165,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #90
     public partial class TypeArgumentListPattern : PatternNode
     {
         private readonly NodeListPattern<TypePattern> _arguments;
@@ -196,6 +202,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #116
     public partial class AliasQualifiedNamePattern : NamePattern
     {
         private readonly IdentifierNamePattern _alias;
@@ -238,6 +245,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #142
     public abstract partial class TypePattern : ExpressionPattern
     {
 
@@ -257,6 +265,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #147
     public partial class PredefinedTypePattern : TypePattern
     {
         private readonly string _keyword;
@@ -291,6 +300,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #177
     public partial class ArrayTypePattern : TypePattern
     {
         private readonly TypePattern _elementType;
@@ -333,6 +343,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #196
     public partial class ArrayRankSpecifierPattern : PatternNode
     {
         private readonly NodeListPattern<ExpressionPattern> _sizes;
@@ -369,6 +380,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #206
     public partial class PointerTypePattern : TypePattern
     {
         private readonly TypePattern _elementType;
@@ -405,6 +417,196 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #226
+    public partial class FunctionPointerTypePattern : TypePattern
+    {
+        private readonly FunctionPointerCallingConventionPattern _callingConvention;
+        private readonly FunctionPointerParameterListPattern _parameterList;
+        private readonly Action<FunctionPointerTypeSyntax> _action;
+
+        internal FunctionPointerTypePattern(FunctionPointerCallingConventionPattern callingConvention, FunctionPointerParameterListPattern parameterList, Action<FunctionPointerTypeSyntax> action)
+        {
+            _callingConvention = callingConvention;
+            _parameterList = parameterList;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is FunctionPointerTypeSyntax typed))
+                return false;
+
+            if (_callingConvention != null && !_callingConvention.Test(typed.CallingConvention, semanticModel))
+                return false;
+            if (_parameterList != null && !_parameterList.Test(typed.ParameterList, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (FunctionPointerTypeSyntax)node;
+
+            if (_callingConvention != null)
+                _callingConvention.RunCallback(typed.CallingConvention, semanticModel);
+            if (_parameterList != null)
+                _parameterList.RunCallback(typed.ParameterList, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #251
+    public partial class FunctionPointerParameterListPattern : PatternNode
+    {
+        private readonly NodeListPattern<FunctionPointerParameterPattern> _parameters;
+        private readonly Action<FunctionPointerParameterListSyntax> _action;
+
+        internal FunctionPointerParameterListPattern(NodeListPattern<FunctionPointerParameterPattern> parameters, Action<FunctionPointerParameterListSyntax> action)
+        {
+            _parameters = parameters;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is FunctionPointerParameterListSyntax typed))
+                return false;
+
+            if (_parameters != null && !_parameters.Test(typed.Parameters, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (FunctionPointerParameterListSyntax)node;
+
+            if (_parameters != null)
+                _parameters.RunCallback(typed.Parameters, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #274
+    public partial class FunctionPointerCallingConventionPattern : PatternNode
+    {
+        private readonly FunctionPointerUnmanagedCallingConventionListPattern _unmanagedCallingConventionList;
+        private readonly Action<FunctionPointerCallingConventionSyntax> _action;
+
+        internal FunctionPointerCallingConventionPattern(FunctionPointerUnmanagedCallingConventionListPattern unmanagedCallingConventionList, Action<FunctionPointerCallingConventionSyntax> action)
+        {
+            _unmanagedCallingConventionList = unmanagedCallingConventionList;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is FunctionPointerCallingConventionSyntax typed))
+                return false;
+
+            if (_unmanagedCallingConventionList != null && !_unmanagedCallingConventionList.Test(typed.UnmanagedCallingConventionList, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (FunctionPointerCallingConventionSyntax)node;
+
+            if (_unmanagedCallingConventionList != null)
+                _unmanagedCallingConventionList.RunCallback(typed.UnmanagedCallingConventionList, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #292
+    public partial class FunctionPointerUnmanagedCallingConventionListPattern : PatternNode
+    {
+        private readonly NodeListPattern<FunctionPointerUnmanagedCallingConventionPattern> _callingConventions;
+        private readonly Action<FunctionPointerUnmanagedCallingConventionListSyntax> _action;
+
+        internal FunctionPointerUnmanagedCallingConventionListPattern(NodeListPattern<FunctionPointerUnmanagedCallingConventionPattern> callingConventions, Action<FunctionPointerUnmanagedCallingConventionListSyntax> action)
+        {
+            _callingConventions = callingConventions;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is FunctionPointerUnmanagedCallingConventionListSyntax typed))
+                return false;
+
+            if (_callingConventions != null && !_callingConventions.Test(typed.CallingConventions, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (FunctionPointerUnmanagedCallingConventionListSyntax)node;
+
+            if (_callingConventions != null)
+                _callingConventions.RunCallback(typed.CallingConventions, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #315
+    public partial class FunctionPointerUnmanagedCallingConventionPattern : PatternNode
+    {
+        private readonly string _name;
+        private readonly Action<FunctionPointerUnmanagedCallingConventionSyntax> _action;
+
+        internal FunctionPointerUnmanagedCallingConventionPattern(string name, Action<FunctionPointerUnmanagedCallingConventionSyntax> action)
+        {
+            _name = name;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is FunctionPointerUnmanagedCallingConventionSyntax typed))
+                return false;
+
+            if (_name != null && _name != typed.Name.Text)
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (FunctionPointerUnmanagedCallingConventionSyntax)node;
+
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #327
     public partial class NullableTypePattern : TypePattern
     {
         private readonly TypePattern _elementType;
@@ -441,6 +643,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #347
     public partial class TupleTypePattern : TypePattern
     {
         private readonly NodeListPattern<TupleElementPattern> _elements;
@@ -477,6 +680,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #369
     public partial class TupleElementPattern : PatternNode
     {
         private readonly TypePattern _type;
@@ -517,6 +721,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #386
     public partial class OmittedTypeArgumentPattern : TypePattern
     {
         private readonly Action<OmittedTypeArgumentSyntax> _action;
@@ -547,6 +752,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #401
     public partial class RefTypePattern : TypePattern
     {
         private readonly TypePattern _type;
@@ -583,7 +789,28 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
-    public abstract partial class ExpressionPattern : PatternNode
+    // #418
+    public abstract partial class ExpressionOrPatternPattern : PatternNode
+    {
+
+        internal ExpressionOrPatternPattern()
+        {
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is ExpressionOrPatternSyntax typed))
+                return false;
+
+
+            return true;
+        }
+    }
+
+    // #419
+    public abstract partial class ExpressionPattern : ExpressionOrPatternPattern
     {
 
         internal ExpressionPattern()
@@ -602,6 +829,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #424
     public partial class ParenthesizedExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -638,6 +866,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #450
     public partial class TupleExpressionPattern : ExpressionPattern
     {
         private readonly NodeListPattern<ArgumentPattern> _arguments;
@@ -674,6 +903,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #476
     public partial class PrefixUnaryExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -714,6 +944,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #512
     public partial class AwaitExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -750,6 +981,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #532
     public partial class PostfixUnaryExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -790,6 +1022,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #556
     public partial class MemberAccessExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -836,6 +1069,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #583
     public partial class ConditionalAccessExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -878,6 +1112,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #608
     public partial class MemberBindingExpressionPattern : ExpressionPattern
     {
         private readonly SimpleNamePattern _name;
@@ -914,6 +1149,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #628
     public partial class ElementBindingExpressionPattern : ExpressionPattern
     {
         private readonly BracketedArgumentListPattern _argumentList;
@@ -950,6 +1186,50 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #642
+    public partial class RangeExpressionPattern : ExpressionPattern
+    {
+        private readonly ExpressionPattern _leftOperand;
+        private readonly ExpressionPattern _rightOperand;
+        private readonly Action<RangeExpressionSyntax> _action;
+
+        internal RangeExpressionPattern(ExpressionPattern leftOperand, ExpressionPattern rightOperand, Action<RangeExpressionSyntax> action)
+        {
+            _leftOperand = leftOperand;
+            _rightOperand = rightOperand;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is RangeExpressionSyntax typed))
+                return false;
+
+            if (_leftOperand != null && !_leftOperand.Test(typed.LeftOperand, semanticModel))
+                return false;
+            if (_rightOperand != null && !_rightOperand.Test(typed.RightOperand, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (RangeExpressionSyntax)node;
+
+            if (_leftOperand != null)
+                _leftOperand.RunCallback(typed.LeftOperand, semanticModel);
+            if (_rightOperand != null)
+                _rightOperand.RunCallback(typed.RightOperand, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #667
     public partial class ImplicitElementAccessPattern : ExpressionPattern
     {
         private readonly BracketedArgumentListPattern _argumentList;
@@ -986,6 +1266,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #681
     public partial class BinaryExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -1032,6 +1313,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #746
     public partial class AssignmentExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -1078,6 +1360,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #793
     public partial class ConditionalExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _condition;
@@ -1126,6 +1409,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #829
     public abstract partial class InstanceExpressionPattern : ExpressionPattern
     {
 
@@ -1145,6 +1429,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #834
     public partial class ThisExpressionPattern : InstanceExpressionPattern
     {
         private readonly Action<ThisExpressionSyntax> _action;
@@ -1175,6 +1460,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #849
     public partial class BaseExpressionPattern : InstanceExpressionPattern
     {
         private readonly Action<BaseExpressionSyntax> _action;
@@ -1205,6 +1491,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #864
     public partial class LiteralExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -1239,6 +1526,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #893
     public partial class MakeRefExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -1275,6 +1563,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #925
     public partial class RefTypeExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -1311,6 +1600,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #957
     public partial class RefValueExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -1353,6 +1643,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1000
     public partial class CheckedExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -1393,6 +1684,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1034
     public partial class DefaultExpressionPattern : ExpressionPattern
     {
         private readonly TypePattern _type;
@@ -1429,6 +1721,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1066
     public partial class TypeOfExpressionPattern : ExpressionPattern
     {
         private readonly TypePattern _type;
@@ -1465,6 +1758,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1098
     public partial class SizeOfExpressionPattern : ExpressionPattern
     {
         private readonly TypePattern _type;
@@ -1501,6 +1795,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1130
     public partial class InvocationExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -1543,6 +1838,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1149
     public partial class ElementAccessExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -1585,6 +1881,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1168
     public abstract partial class BaseArgumentListPattern : PatternNode
     {
         private readonly NodeListPattern<ArgumentPattern> _arguments;
@@ -1616,6 +1913,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1178
     public partial class ArgumentListPattern : BaseArgumentListPattern
     {
         private readonly Action<ArgumentListSyntax> _action;
@@ -1649,6 +1947,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1204
     public partial class BracketedArgumentListPattern : BaseArgumentListPattern
     {
         private readonly Action<BracketedArgumentListSyntax> _action;
@@ -1682,6 +1981,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1230
     public partial class ArgumentPattern : PatternNode
     {
         private readonly NameColonPattern _nameColon;
@@ -1724,6 +2024,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1257
     public partial class NameColonPattern : PatternNode
     {
         private readonly IdentifierNamePattern _name;
@@ -1760,6 +2061,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1278
     public partial class DeclarationExpressionPattern : ExpressionPattern
     {
         private readonly TypePattern _type;
@@ -1802,6 +2104,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1293
     public partial class CastExpressionPattern : ExpressionPattern
     {
         private readonly TypePattern _type;
@@ -1844,13 +2147,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1324
     public abstract partial class AnonymousFunctionExpressionPattern : ExpressionPattern
     {
-        private readonly PatternNode _body;
+        private readonly TokenListPattern _modifiers;
 
-        internal AnonymousFunctionExpressionPattern(PatternNode body)
+        internal AnonymousFunctionExpressionPattern(TokenListPattern modifiers)
         {
-            _body = body;
+            _modifiers = modifiers;
         }
 
         internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
@@ -1860,28 +2164,21 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is AnonymousFunctionExpressionSyntax typed))
                 return false;
 
-            if (_body != null && !_body.Test(typed.Body, semanticModel))
+            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
                 return false;
 
             return true;
         }
-
-        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
-        {
-            var typed = (AnonymousFunctionExpressionSyntax)node;
-
-            if (_body != null)
-                _body.RunCallback(typed.Body, semanticModel);
-        }
     }
 
+    // #1348
     public partial class AnonymousMethodExpressionPattern : AnonymousFunctionExpressionPattern
     {
         private readonly ParameterListPattern _parameterList;
         private readonly Action<AnonymousMethodExpressionSyntax> _action;
 
-        internal AnonymousMethodExpressionPattern(PatternNode body, ParameterListPattern parameterList, Action<AnonymousMethodExpressionSyntax> action)
-            : base(body)
+        internal AnonymousMethodExpressionPattern(TokenListPattern modifiers, ParameterListPattern parameterList, Action<AnonymousMethodExpressionSyntax> action)
+            : base(modifiers)
         {
             _parameterList = parameterList;
             _action = action;
@@ -1902,8 +2199,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
-            base.RunCallback(node, semanticModel);
-
             var typed = (AnonymousMethodExpressionSyntax)node;
 
             if (_parameterList != null)
@@ -1914,11 +2209,12 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1385
     public abstract partial class LambdaExpressionPattern : AnonymousFunctionExpressionPattern
     {
 
-        internal LambdaExpressionPattern(PatternNode body)
-            : base(body)
+        internal LambdaExpressionPattern(TokenListPattern modifiers)
+            : base(modifiers)
         {
         }
 
@@ -1934,13 +2230,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1397
     public partial class SimpleLambdaExpressionPattern : LambdaExpressionPattern
     {
         private readonly ParameterPattern _parameter;
         private readonly Action<SimpleLambdaExpressionSyntax> _action;
 
-        internal SimpleLambdaExpressionPattern(PatternNode body, ParameterPattern parameter, Action<SimpleLambdaExpressionSyntax> action)
-            : base(body)
+        internal SimpleLambdaExpressionPattern(TokenListPattern modifiers, ParameterPattern parameter, Action<SimpleLambdaExpressionSyntax> action)
+            : base(modifiers)
         {
             _parameter = parameter;
             _action = action;
@@ -1971,6 +2268,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1438
     public partial class RefExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -2007,13 +2305,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1445
     public partial class ParenthesizedLambdaExpressionPattern : LambdaExpressionPattern
     {
         private readonly ParameterListPattern _parameterList;
         private readonly Action<ParenthesizedLambdaExpressionSyntax> _action;
 
-        internal ParenthesizedLambdaExpressionPattern(PatternNode body, ParameterListPattern parameterList, Action<ParenthesizedLambdaExpressionSyntax> action)
-            : base(body)
+        internal ParenthesizedLambdaExpressionPattern(TokenListPattern modifiers, ParameterListPattern parameterList, Action<ParenthesizedLambdaExpressionSyntax> action)
+            : base(modifiers)
         {
             _parameterList = parameterList;
             _action = action;
@@ -2044,6 +2343,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1485
     public partial class InitializerExpressionPattern : ExpressionPattern
     {
         private readonly SyntaxKind _kind;
@@ -2084,18 +2384,88 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
-    public partial class ObjectCreationExpressionPattern : ExpressionPattern
+    // #1515
+    public abstract partial class BaseObjectCreationExpressionPattern : ExpressionPattern
     {
-        private readonly TypePattern _type;
         private readonly ArgumentListPattern _argumentList;
         private readonly InitializerExpressionPattern _initializer;
-        private readonly Action<ObjectCreationExpressionSyntax> _action;
 
-        internal ObjectCreationExpressionPattern(TypePattern type, ArgumentListPattern argumentList, InitializerExpressionPattern initializer, Action<ObjectCreationExpressionSyntax> action)
+        internal BaseObjectCreationExpressionPattern(ArgumentListPattern argumentList, InitializerExpressionPattern initializer)
         {
-            _type = type;
             _argumentList = argumentList;
             _initializer = initializer;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is BaseObjectCreationExpressionSyntax typed))
+                return false;
+
+            if (_argumentList != null && !_argumentList.Test(typed.ArgumentList, semanticModel))
+                return false;
+            if (_initializer != null && !_initializer.Test(typed.Initializer, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (BaseObjectCreationExpressionSyntax)node;
+
+            if (_argumentList != null)
+                _argumentList.RunCallback(typed.ArgumentList, semanticModel);
+            if (_initializer != null)
+                _initializer.RunCallback(typed.Initializer, semanticModel);
+        }
+    }
+
+    // #1533
+    public partial class ImplicitObjectCreationExpressionPattern : BaseObjectCreationExpressionPattern
+    {
+        private readonly Action<ImplicitObjectCreationExpressionSyntax> _action;
+
+        internal ImplicitObjectCreationExpressionPattern(ArgumentListPattern argumentList, InitializerExpressionPattern initializer, Action<ImplicitObjectCreationExpressionSyntax> action)
+            : base(argumentList, initializer)
+        {
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is ImplicitObjectCreationExpressionSyntax typed))
+                return false;
+
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            base.RunCallback(node, semanticModel);
+
+            var typed = (ImplicitObjectCreationExpressionSyntax)node;
+
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #1558
+    public partial class ObjectCreationExpressionPattern : BaseObjectCreationExpressionPattern
+    {
+        private readonly TypePattern _type;
+        private readonly Action<ObjectCreationExpressionSyntax> _action;
+
+        internal ObjectCreationExpressionPattern(ArgumentListPattern argumentList, InitializerExpressionPattern initializer, TypePattern type, Action<ObjectCreationExpressionSyntax> action)
+            : base(argumentList, initializer)
+        {
+            _type = type;
             _action = action;
         }
 
@@ -2108,7 +2478,46 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
             if (_type != null && !_type.Test(typed.Type, semanticModel))
                 return false;
-            if (_argumentList != null && !_argumentList.Test(typed.ArgumentList, semanticModel))
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            base.RunCallback(node, semanticModel);
+
+            var typed = (ObjectCreationExpressionSyntax)node;
+
+            if (_type != null)
+                _type.RunCallback(typed.Type, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #1588
+    public partial class WithExpressionPattern : ExpressionPattern
+    {
+        private readonly ExpressionPattern _expression;
+        private readonly InitializerExpressionPattern _initializer;
+        private readonly Action<WithExpressionSyntax> _action;
+
+        internal WithExpressionPattern(ExpressionPattern expression, InitializerExpressionPattern initializer, Action<WithExpressionSyntax> action)
+        {
+            _expression = expression;
+            _initializer = initializer;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is WithExpressionSyntax typed))
+                return false;
+
+            if (_expression != null && !_expression.Test(typed.Expression, semanticModel))
                 return false;
             if (_initializer != null && !_initializer.Test(typed.Initializer, semanticModel))
                 return false;
@@ -2118,12 +2527,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
-            var typed = (ObjectCreationExpressionSyntax)node;
+            var typed = (WithExpressionSyntax)node;
 
-            if (_type != null)
-                _type.RunCallback(typed.Type, semanticModel);
-            if (_argumentList != null)
-                _argumentList.RunCallback(typed.ArgumentList, semanticModel);
+            if (_expression != null)
+                _expression.RunCallback(typed.Expression, semanticModel);
             if (_initializer != null)
                 _initializer.RunCallback(typed.Initializer, semanticModel);
 
@@ -2132,6 +2539,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1600
     public partial class AnonymousObjectMemberDeclaratorPattern : PatternNode
     {
         private readonly NameEqualsPattern _nameEquals;
@@ -2174,6 +2582,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1616
     public partial class AnonymousObjectCreationExpressionPattern : ExpressionPattern
     {
         private readonly NodeListPattern<AnonymousObjectMemberDeclaratorPattern> _initializers;
@@ -2210,6 +2619,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1648
     public partial class ArrayCreationExpressionPattern : ExpressionPattern
     {
         private readonly ArrayTypePattern _type;
@@ -2252,6 +2662,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1673
     public partial class ImplicitArrayCreationExpressionPattern : ExpressionPattern
     {
         private readonly InitializerExpressionPattern _initializer;
@@ -2288,14 +2699,17 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1710
     public partial class StackAllocArrayCreationExpressionPattern : ExpressionPattern
     {
         private readonly TypePattern _type;
+        private readonly InitializerExpressionPattern _initializer;
         private readonly Action<StackAllocArrayCreationExpressionSyntax> _action;
 
-        internal StackAllocArrayCreationExpressionPattern(TypePattern type, Action<StackAllocArrayCreationExpressionSyntax> action)
+        internal StackAllocArrayCreationExpressionPattern(TypePattern type, InitializerExpressionPattern initializer, Action<StackAllocArrayCreationExpressionSyntax> action)
         {
             _type = type;
+            _initializer = initializer;
             _action = action;
         }
 
@@ -2308,6 +2722,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
             if (_type != null && !_type.Test(typed.Type, semanticModel))
                 return false;
+            if (_initializer != null && !_initializer.Test(typed.Initializer, semanticModel))
+                return false;
 
             return true;
         }
@@ -2318,12 +2734,52 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
             if (_type != null)
                 _type.RunCallback(typed.Type, semanticModel);
+            if (_initializer != null)
+                _initializer.RunCallback(typed.Initializer, semanticModel);
 
             if (_action != null)
                 _action(typed);
         }
     }
 
+    // #1735
+    public partial class ImplicitStackAllocArrayCreationExpressionPattern : ExpressionPattern
+    {
+        private readonly InitializerExpressionPattern _initializer;
+        private readonly Action<ImplicitStackAllocArrayCreationExpressionSyntax> _action;
+
+        internal ImplicitStackAllocArrayCreationExpressionPattern(InitializerExpressionPattern initializer, Action<ImplicitStackAllocArrayCreationExpressionSyntax> action)
+        {
+            _initializer = initializer;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is ImplicitStackAllocArrayCreationExpressionSyntax typed))
+                return false;
+
+            if (_initializer != null && !_initializer.Test(typed.Initializer, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (ImplicitStackAllocArrayCreationExpressionSyntax)node;
+
+            if (_initializer != null)
+                _initializer.RunCallback(typed.Initializer, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #1767
     public abstract partial class QueryClausePattern : PatternNode
     {
 
@@ -2343,6 +2799,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1769
     public abstract partial class SelectOrGroupClausePattern : PatternNode
     {
 
@@ -2362,6 +2819,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1771
     public partial class QueryExpressionPattern : ExpressionPattern
     {
         private readonly FromClausePattern _fromClause;
@@ -2404,6 +2862,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1776
     public partial class QueryBodyPattern : PatternNode
     {
         private readonly NodeListPattern<QueryClausePattern> _clauses;
@@ -2452,6 +2911,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1782
     public partial class FromClausePattern : QueryClausePattern
     {
         private readonly TypePattern _type;
@@ -2498,6 +2958,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1799
     public partial class LetClausePattern : QueryClausePattern
     {
         private readonly string _identifier;
@@ -2538,6 +2999,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1815
     public partial class JoinClausePattern : QueryClausePattern
     {
         private readonly TypePattern _type;
@@ -2602,6 +3064,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1841
     public partial class JoinIntoClausePattern : PatternNode
     {
         private readonly string _identifier;
@@ -2636,6 +3099,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1853
     public partial class WhereClausePattern : QueryClausePattern
     {
         private readonly ExpressionPattern _condition;
@@ -2672,6 +3136,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1860
     public partial class OrderByClausePattern : QueryClausePattern
     {
         private readonly NodeListPattern<OrderingPattern> _orderings;
@@ -2708,6 +3173,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1867
     public partial class OrderingPattern : PatternNode
     {
         private readonly SyntaxKind _kind;
@@ -2748,6 +3214,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1876
     public partial class SelectClausePattern : SelectOrGroupClausePattern
     {
         private readonly ExpressionPattern _expression;
@@ -2784,6 +3251,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1883
     public partial class GroupClausePattern : SelectOrGroupClausePattern
     {
         private readonly ExpressionPattern _groupExpression;
@@ -2826,6 +3294,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1894
     public partial class QueryContinuationPattern : PatternNode
     {
         private readonly string _identifier;
@@ -2866,6 +3335,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1907
     public partial class OmittedArraySizeExpressionPattern : ExpressionPattern
     {
         private readonly Action<OmittedArraySizeExpressionSyntax> _action;
@@ -2896,6 +3366,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1922
     public partial class InterpolatedStringExpressionPattern : ExpressionPattern
     {
         private readonly NodeListPattern<InterpolatedStringContentPattern> _contents;
@@ -2932,6 +3403,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1943
     public partial class IsPatternExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -2974,6 +3446,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1965
     public partial class ThrowExpressionPattern : ExpressionPattern
     {
         private readonly ExpressionPattern _expression;
@@ -3010,6 +3483,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1972
     public partial class WhenClausePattern : PatternNode
     {
         private readonly ExpressionPattern _condition;
@@ -3046,7 +3520,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
-    public abstract partial class PatternPattern : PatternNode
+    // #1979
+    public abstract partial class PatternPattern : ExpressionOrPatternPattern
     {
 
         internal PatternPattern()
@@ -3065,6 +3540,38 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1980
+    public partial class DiscardPatternPattern : PatternPattern
+    {
+        private readonly Action<DiscardPatternSyntax> _action;
+
+        internal DiscardPatternPattern(Action<DiscardPatternSyntax> action)
+        {
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is DiscardPatternSyntax typed))
+                return false;
+
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (DiscardPatternSyntax)node;
+
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #1986
     public partial class DeclarationPatternPattern : PatternPattern
     {
         private readonly TypePattern _type;
@@ -3107,6 +3614,216 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #1994
+    public partial class VarPatternPattern : PatternPattern
+    {
+        private readonly VariableDesignationPattern _designation;
+        private readonly Action<VarPatternSyntax> _action;
+
+        internal VarPatternPattern(VariableDesignationPattern designation, Action<VarPatternSyntax> action)
+        {
+            _designation = designation;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is VarPatternSyntax typed))
+                return false;
+
+            if (_designation != null && !_designation.Test(typed.Designation, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (VarPatternSyntax)node;
+
+            if (_designation != null)
+                _designation.RunCallback(typed.Designation, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2001
+    public partial class RecursivePatternPattern : PatternPattern
+    {
+        private readonly TypePattern _type;
+        private readonly PositionalPatternClausePattern _positionalPatternClause;
+        private readonly PropertyPatternClausePattern _propertyPatternClause;
+        private readonly VariableDesignationPattern _designation;
+        private readonly Action<RecursivePatternSyntax> _action;
+
+        internal RecursivePatternPattern(TypePattern type, PositionalPatternClausePattern positionalPatternClause, PropertyPatternClausePattern propertyPatternClause, VariableDesignationPattern designation, Action<RecursivePatternSyntax> action)
+        {
+            _type = type;
+            _positionalPatternClause = positionalPatternClause;
+            _propertyPatternClause = propertyPatternClause;
+            _designation = designation;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is RecursivePatternSyntax typed))
+                return false;
+
+            if (_type != null && !_type.Test(typed.Type, semanticModel))
+                return false;
+            if (_positionalPatternClause != null && !_positionalPatternClause.Test(typed.PositionalPatternClause, semanticModel))
+                return false;
+            if (_propertyPatternClause != null && !_propertyPatternClause.Test(typed.PropertyPatternClause, semanticModel))
+                return false;
+            if (_designation != null && !_designation.Test(typed.Designation, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (RecursivePatternSyntax)node;
+
+            if (_type != null)
+                _type.RunCallback(typed.Type, semanticModel);
+            if (_positionalPatternClause != null)
+                _positionalPatternClause.RunCallback(typed.PositionalPatternClause, semanticModel);
+            if (_propertyPatternClause != null)
+                _propertyPatternClause.RunCallback(typed.PropertyPatternClause, semanticModel);
+            if (_designation != null)
+                _designation.RunCallback(typed.Designation, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2011
+    public partial class PositionalPatternClausePattern : PatternNode
+    {
+        private readonly NodeListPattern<SubpatternPattern> _subpatterns;
+        private readonly Action<PositionalPatternClauseSyntax> _action;
+
+        internal PositionalPatternClausePattern(NodeListPattern<SubpatternPattern> subpatterns, Action<PositionalPatternClauseSyntax> action)
+        {
+            _subpatterns = subpatterns;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is PositionalPatternClauseSyntax typed))
+                return false;
+
+            if (_subpatterns != null && !_subpatterns.Test(typed.Subpatterns, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (PositionalPatternClauseSyntax)node;
+
+            if (_subpatterns != null)
+                _subpatterns.RunCallback(typed.Subpatterns, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2021
+    public partial class PropertyPatternClausePattern : PatternNode
+    {
+        private readonly NodeListPattern<SubpatternPattern> _subpatterns;
+        private readonly Action<PropertyPatternClauseSyntax> _action;
+
+        internal PropertyPatternClausePattern(NodeListPattern<SubpatternPattern> subpatterns, Action<PropertyPatternClauseSyntax> action)
+        {
+            _subpatterns = subpatterns;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is PropertyPatternClauseSyntax typed))
+                return false;
+
+            if (_subpatterns != null && !_subpatterns.Test(typed.Subpatterns, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (PropertyPatternClauseSyntax)node;
+
+            if (_subpatterns != null)
+                _subpatterns.RunCallback(typed.Subpatterns, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2031
+    public partial class SubpatternPattern : PatternNode
+    {
+        private readonly NameColonPattern _nameColon;
+        private readonly PatternPattern _pattern;
+        private readonly Action<SubpatternSyntax> _action;
+
+        internal SubpatternPattern(NameColonPattern nameColon, PatternPattern pattern, Action<SubpatternSyntax> action)
+        {
+            _nameColon = nameColon;
+            _pattern = pattern;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is SubpatternSyntax typed))
+                return false;
+
+            if (_nameColon != null && !_nameColon.Test(typed.NameColon, semanticModel))
+                return false;
+            if (_pattern != null && !_pattern.Test(typed.Pattern, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (SubpatternSyntax)node;
+
+            if (_nameColon != null)
+                _nameColon.RunCallback(typed.NameColon, semanticModel);
+            if (_pattern != null)
+                _pattern.RunCallback(typed.Pattern, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2036
     public partial class ConstantPatternPattern : PatternPattern
     {
         private readonly ExpressionPattern _expression;
@@ -3143,6 +3860,202 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2046
+    public partial class ParenthesizedPatternPattern : PatternPattern
+    {
+        private readonly PatternPattern _pattern;
+        private readonly Action<ParenthesizedPatternSyntax> _action;
+
+        internal ParenthesizedPatternPattern(PatternPattern pattern, Action<ParenthesizedPatternSyntax> action)
+        {
+            _pattern = pattern;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is ParenthesizedPatternSyntax typed))
+                return false;
+
+            if (_pattern != null && !_pattern.Test(typed.Pattern, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (ParenthesizedPatternSyntax)node;
+
+            if (_pattern != null)
+                _pattern.RunCallback(typed.Pattern, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2056
+    public partial class RelationalPatternPattern : PatternPattern
+    {
+        private readonly ExpressionPattern _expression;
+        private readonly Action<RelationalPatternSyntax> _action;
+
+        internal RelationalPatternPattern(ExpressionPattern expression, Action<RelationalPatternSyntax> action)
+        {
+            _expression = expression;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is RelationalPatternSyntax typed))
+                return false;
+
+            if (_expression != null && !_expression.Test(typed.Expression, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (RelationalPatternSyntax)node;
+
+            if (_expression != null)
+                _expression.RunCallback(typed.Expression, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2071
+    public partial class TypePatternPattern : PatternPattern
+    {
+        private readonly TypePattern _type;
+        private readonly Action<TypePatternSyntax> _action;
+
+        internal TypePatternPattern(TypePattern type, Action<TypePatternSyntax> action)
+        {
+            _type = type;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is TypePatternSyntax typed))
+                return false;
+
+            if (_type != null && !_type.Test(typed.Type, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (TypePatternSyntax)node;
+
+            if (_type != null)
+                _type.RunCallback(typed.Type, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2079
+    public partial class BinaryPatternPattern : PatternPattern
+    {
+        private readonly SyntaxKind _kind;
+        private readonly PatternPattern _left;
+        private readonly PatternPattern _right;
+        private readonly Action<BinaryPatternSyntax> _action;
+
+        internal BinaryPatternPattern(SyntaxKind kind, PatternPattern left, PatternPattern right, Action<BinaryPatternSyntax> action)
+        {
+            _kind = kind;
+            _left = left;
+            _right = right;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is BinaryPatternSyntax typed))
+                return false;
+
+            if (_kind != SyntaxKind.None && !typed.IsKind(_kind))
+                return false;
+            if (_left != null && !_left.Test(typed.Left, semanticModel))
+                return false;
+            if (_right != null && !_right.Test(typed.Right, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (BinaryPatternSyntax)node;
+
+            if (_left != null)
+                _left.RunCallback(typed.Left, semanticModel);
+            if (_right != null)
+                _right.RunCallback(typed.Right, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2089
+    public partial class UnaryPatternPattern : PatternPattern
+    {
+        private readonly PatternPattern _pattern;
+        private readonly Action<UnaryPatternSyntax> _action;
+
+        internal UnaryPatternPattern(PatternPattern pattern, Action<UnaryPatternSyntax> action)
+        {
+            _pattern = pattern;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is UnaryPatternSyntax typed))
+                return false;
+
+            if (_pattern != null && !_pattern.Test(typed.Pattern, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (UnaryPatternSyntax)node;
+
+            if (_pattern != null)
+                _pattern.RunCallback(typed.Pattern, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2097
     public abstract partial class InterpolatedStringContentPattern : PatternNode
     {
 
@@ -3162,6 +4075,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2098
     public partial class InterpolatedStringTextPattern : InterpolatedStringContentPattern
     {
         private readonly Action<InterpolatedStringTextSyntax> _action;
@@ -3192,6 +4106,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2107
     public partial class InterpolationPattern : InterpolatedStringContentPattern
     {
         private readonly ExpressionPattern _expression;
@@ -3240,6 +4155,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2119
     public partial class InterpolationAlignmentClausePattern : PatternNode
     {
         private readonly ExpressionPattern _value;
@@ -3276,6 +4192,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2124
     public partial class InterpolationFormatClausePattern : PatternNode
     {
         private readonly Action<InterpolationFormatClauseSyntax> _action;
@@ -3306,12 +4223,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2135
     public partial class GlobalStatementPattern : MemberDeclarationPattern
     {
         private readonly StatementPattern _statement;
         private readonly Action<GlobalStatementSyntax> _action;
 
-        internal GlobalStatementPattern(StatementPattern statement, Action<GlobalStatementSyntax> action)
+        internal GlobalStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, StatementPattern statement, Action<GlobalStatementSyntax> action)
+            : base(attributeLists, modifiers)
         {
             _statement = statement;
             _action = action;
@@ -3332,6 +4251,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (GlobalStatementSyntax)node;
 
             if (_statement != null)
@@ -3342,11 +4263,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2145
     public abstract partial class StatementPattern : PatternNode
     {
+        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
 
-        internal StatementPattern()
+        internal StatementPattern(NodeListPattern<AttributeListPattern> attributeLists)
         {
+            _attributeLists = attributeLists;
         }
 
         internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
@@ -3356,17 +4280,29 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is StatementSyntax typed))
                 return false;
 
+            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
+                return false;
 
             return true;
         }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (StatementSyntax)node;
+
+            if (_attributeLists != null)
+                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
+        }
     }
 
+    // #2151
     public partial class BlockPattern : StatementPattern
     {
         private readonly NodeListPattern<StatementPattern> _statements;
         private readonly Action<BlockSyntax> _action;
 
-        internal BlockPattern(NodeListPattern<StatementPattern> statements, Action<BlockSyntax> action)
+        internal BlockPattern(NodeListPattern<AttributeListPattern> attributeLists, NodeListPattern<StatementPattern> statements, Action<BlockSyntax> action)
+            : base(attributeLists)
         {
             _statements = statements;
             _action = action;
@@ -3387,6 +4323,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (BlockSyntax)node;
 
             if (_statements != null)
@@ -3397,6 +4335,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2162
     public partial class LocalFunctionStatementPattern : StatementPattern
     {
         private readonly TokenListPattern _modifiers;
@@ -3405,11 +4344,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         private readonly TypeParameterListPattern _typeParameterList;
         private readonly ParameterListPattern _parameterList;
         private readonly NodeListPattern<TypeParameterConstraintClausePattern> _constraintClauses;
-        private readonly BlockPattern _body;
-        private readonly ArrowExpressionClausePattern _expressionBody;
         private readonly Action<LocalFunctionStatementSyntax> _action;
 
-        internal LocalFunctionStatementPattern(TokenListPattern modifiers, TypePattern returnType, string identifier, TypeParameterListPattern typeParameterList, ParameterListPattern parameterList, NodeListPattern<TypeParameterConstraintClausePattern> constraintClauses, BlockPattern body, ArrowExpressionClausePattern expressionBody, Action<LocalFunctionStatementSyntax> action)
+        internal LocalFunctionStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern returnType, string identifier, TypeParameterListPattern typeParameterList, ParameterListPattern parameterList, NodeListPattern<TypeParameterConstraintClausePattern> constraintClauses, Action<LocalFunctionStatementSyntax> action)
+            : base(attributeLists)
         {
             _modifiers = modifiers;
             _returnType = returnType;
@@ -3417,8 +4355,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             _typeParameterList = typeParameterList;
             _parameterList = parameterList;
             _constraintClauses = constraintClauses;
-            _body = body;
-            _expressionBody = expressionBody;
             _action = action;
         }
 
@@ -3441,16 +4377,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
                 return false;
             if (_constraintClauses != null && !_constraintClauses.Test(typed.ConstraintClauses, semanticModel))
                 return false;
-            if (_body != null && !_body.Test(typed.Body, semanticModel))
-                return false;
-            if (_expressionBody != null && !_expressionBody.Test(typed.ExpressionBody, semanticModel))
-                return false;
 
             return true;
         }
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (LocalFunctionStatementSyntax)node;
 
             if (_returnType != null)
@@ -3461,23 +4395,21 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
                 _parameterList.RunCallback(typed.ParameterList, semanticModel);
             if (_constraintClauses != null)
                 _constraintClauses.RunCallback(typed.ConstraintClauses, semanticModel);
-            if (_body != null)
-                _body.RunCallback(typed.Body, semanticModel);
-            if (_expressionBody != null)
-                _expressionBody.RunCallback(typed.ExpressionBody, semanticModel);
 
             if (_action != null)
                 _action(typed);
         }
     }
 
+    // #2190
     public partial class LocalDeclarationStatementPattern : StatementPattern
     {
         private readonly TokenListPattern _modifiers;
         private readonly VariableDeclarationPattern _declaration;
         private readonly Action<LocalDeclarationStatementSyntax> _action;
 
-        internal LocalDeclarationStatementPattern(TokenListPattern modifiers, VariableDeclarationPattern declaration, Action<LocalDeclarationStatementSyntax> action)
+        internal LocalDeclarationStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, VariableDeclarationPattern declaration, Action<LocalDeclarationStatementSyntax> action)
+            : base(attributeLists)
         {
             _modifiers = modifiers;
             _declaration = declaration;
@@ -3501,6 +4433,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (LocalDeclarationStatementSyntax)node;
 
             if (_declaration != null)
@@ -3511,6 +4445,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2210
     public partial class VariableDeclarationPattern : PatternNode
     {
         private readonly TypePattern _type;
@@ -3553,6 +4488,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2216
     public partial class VariableDeclaratorPattern : PatternNode
     {
         private readonly string _identifier;
@@ -3599,6 +4535,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2227
     public partial class EqualsValueClausePattern : PatternNode
     {
         private readonly ExpressionPattern _value;
@@ -3635,6 +4572,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2234
     public abstract partial class VariableDesignationPattern : PatternNode
     {
 
@@ -3654,6 +4592,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2236
     public partial class SingleVariableDesignationPattern : VariableDesignationPattern
     {
         private readonly string _identifier;
@@ -3688,6 +4627,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2242
     public partial class DiscardDesignationPattern : VariableDesignationPattern
     {
         private readonly Action<DiscardDesignationSyntax> _action;
@@ -3718,6 +4658,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2248
     public partial class ParenthesizedVariableDesignationPattern : VariableDesignationPattern
     {
         private readonly NodeListPattern<VariableDesignationPattern> _variables;
@@ -3754,12 +4695,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2259
     public partial class ExpressionStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _expression;
         private readonly Action<ExpressionStatementSyntax> _action;
 
-        internal ExpressionStatementPattern(ExpressionPattern expression, Action<ExpressionStatementSyntax> action)
+        internal ExpressionStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, Action<ExpressionStatementSyntax> action)
+            : base(attributeLists)
         {
             _expression = expression;
             _action = action;
@@ -3780,6 +4723,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (ExpressionStatementSyntax)node;
 
             if (_expression != null)
@@ -3790,11 +4735,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2268
     public partial class EmptyStatementPattern : StatementPattern
     {
         private readonly Action<EmptyStatementSyntax> _action;
 
-        internal EmptyStatementPattern(Action<EmptyStatementSyntax> action)
+        internal EmptyStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, Action<EmptyStatementSyntax> action)
+            : base(attributeLists)
         {
             _action = action;
         }
@@ -3812,6 +4759,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (EmptyStatementSyntax)node;
 
 
@@ -3820,13 +4769,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2275
     public partial class LabeledStatementPattern : StatementPattern
     {
         private readonly string _identifier;
         private readonly StatementPattern _statement;
         private readonly Action<LabeledStatementSyntax> _action;
 
-        internal LabeledStatementPattern(string identifier, StatementPattern statement, Action<LabeledStatementSyntax> action)
+        internal LabeledStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, string identifier, StatementPattern statement, Action<LabeledStatementSyntax> action)
+            : base(attributeLists)
         {
             _identifier = identifier;
             _statement = statement;
@@ -3850,6 +4801,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (LabeledStatementSyntax)node;
 
             if (_statement != null)
@@ -3860,13 +4813,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2298
     public partial class GotoStatementPattern : StatementPattern
     {
         private readonly SyntaxKind _kind;
         private readonly ExpressionPattern _expression;
         private readonly Action<GotoStatementSyntax> _action;
 
-        internal GotoStatementPattern(SyntaxKind kind, ExpressionPattern expression, Action<GotoStatementSyntax> action)
+        internal GotoStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, SyntaxKind kind, ExpressionPattern expression, Action<GotoStatementSyntax> action)
+            : base(attributeLists)
         {
             _kind = kind;
             _expression = expression;
@@ -3890,6 +4845,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (GotoStatementSyntax)node;
 
             if (_expression != null)
@@ -3900,11 +4857,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2346
     public partial class BreakStatementPattern : StatementPattern
     {
         private readonly Action<BreakStatementSyntax> _action;
 
-        internal BreakStatementPattern(Action<BreakStatementSyntax> action)
+        internal BreakStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, Action<BreakStatementSyntax> action)
+            : base(attributeLists)
         {
             _action = action;
         }
@@ -3922,6 +4881,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (BreakStatementSyntax)node;
 
 
@@ -3930,11 +4891,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2356
     public partial class ContinueStatementPattern : StatementPattern
     {
         private readonly Action<ContinueStatementSyntax> _action;
 
-        internal ContinueStatementPattern(Action<ContinueStatementSyntax> action)
+        internal ContinueStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, Action<ContinueStatementSyntax> action)
+            : base(attributeLists)
         {
             _action = action;
         }
@@ -3952,6 +4915,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (ContinueStatementSyntax)node;
 
 
@@ -3960,12 +4925,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2366
     public partial class ReturnStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _expression;
         private readonly Action<ReturnStatementSyntax> _action;
 
-        internal ReturnStatementPattern(ExpressionPattern expression, Action<ReturnStatementSyntax> action)
+        internal ReturnStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, Action<ReturnStatementSyntax> action)
+            : base(attributeLists)
         {
             _expression = expression;
             _action = action;
@@ -3986,6 +4953,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (ReturnStatementSyntax)node;
 
             if (_expression != null)
@@ -3996,12 +4965,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2377
     public partial class ThrowStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _expression;
         private readonly Action<ThrowStatementSyntax> _action;
 
-        internal ThrowStatementPattern(ExpressionPattern expression, Action<ThrowStatementSyntax> action)
+        internal ThrowStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, Action<ThrowStatementSyntax> action)
+            : base(attributeLists)
         {
             _expression = expression;
             _action = action;
@@ -4022,6 +4993,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (ThrowStatementSyntax)node;
 
             if (_expression != null)
@@ -4032,13 +5005,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2388
     public partial class YieldStatementPattern : StatementPattern
     {
         private readonly SyntaxKind _kind;
         private readonly ExpressionPattern _expression;
         private readonly Action<YieldStatementSyntax> _action;
 
-        internal YieldStatementPattern(SyntaxKind kind, ExpressionPattern expression, Action<YieldStatementSyntax> action)
+        internal YieldStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, SyntaxKind kind, ExpressionPattern expression, Action<YieldStatementSyntax> action)
+            : base(attributeLists)
         {
             _kind = kind;
             _expression = expression;
@@ -4062,6 +5037,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (YieldStatementSyntax)node;
 
             if (_expression != null)
@@ -4072,13 +5049,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2404
     public partial class WhileStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _condition;
         private readonly StatementPattern _statement;
         private readonly Action<WhileStatementSyntax> _action;
 
-        internal WhileStatementPattern(ExpressionPattern condition, StatementPattern statement, Action<WhileStatementSyntax> action)
+        internal WhileStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern condition, StatementPattern statement, Action<WhileStatementSyntax> action)
+            : base(attributeLists)
         {
             _condition = condition;
             _statement = statement;
@@ -4102,6 +5081,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (WhileStatementSyntax)node;
 
             if (_condition != null)
@@ -4114,13 +5095,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2419
     public partial class DoStatementPattern : StatementPattern
     {
         private readonly StatementPattern _statement;
         private readonly ExpressionPattern _condition;
         private readonly Action<DoStatementSyntax> _action;
 
-        internal DoStatementPattern(StatementPattern statement, ExpressionPattern condition, Action<DoStatementSyntax> action)
+        internal DoStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, StatementPattern statement, ExpressionPattern condition, Action<DoStatementSyntax> action)
+            : base(attributeLists)
         {
             _statement = statement;
             _condition = condition;
@@ -4144,6 +5127,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (DoStatementSyntax)node;
 
             if (_statement != null)
@@ -4156,19 +5141,17 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2440
     public partial class ForStatementPattern : StatementPattern
     {
-        private readonly VariableDeclarationPattern _declaration;
-        private readonly NodeListPattern<ExpressionPattern> _initializers;
         private readonly ExpressionPattern _condition;
         private readonly NodeListPattern<ExpressionPattern> _incrementors;
         private readonly StatementPattern _statement;
         private readonly Action<ForStatementSyntax> _action;
 
-        internal ForStatementPattern(VariableDeclarationPattern declaration, NodeListPattern<ExpressionPattern> initializers, ExpressionPattern condition, NodeListPattern<ExpressionPattern> incrementors, StatementPattern statement, Action<ForStatementSyntax> action)
+        internal ForStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern condition, NodeListPattern<ExpressionPattern> incrementors, StatementPattern statement, Action<ForStatementSyntax> action)
+            : base(attributeLists)
         {
-            _declaration = declaration;
-            _initializers = initializers;
             _condition = condition;
             _incrementors = incrementors;
             _statement = statement;
@@ -4182,10 +5165,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is ForStatementSyntax typed))
                 return false;
 
-            if (_declaration != null && !_declaration.Test(typed.Declaration, semanticModel))
-                return false;
-            if (_initializers != null && !_initializers.Test(typed.Initializers, semanticModel))
-                return false;
             if (_condition != null && !_condition.Test(typed.Condition, semanticModel))
                 return false;
             if (_incrementors != null && !_incrementors.Test(typed.Incrementors, semanticModel))
@@ -4198,12 +5177,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (ForStatementSyntax)node;
 
-            if (_declaration != null)
-                _declaration.RunCallback(typed.Declaration, semanticModel);
-            if (_initializers != null)
-                _initializers.RunCallback(typed.Initializers, semanticModel);
             if (_condition != null)
                 _condition.RunCallback(typed.Condition, semanticModel);
             if (_incrementors != null)
@@ -4216,12 +5193,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2469
     public abstract partial class CommonForEachStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _expression;
         private readonly StatementPattern _statement;
 
-        internal CommonForEachStatementPattern(ExpressionPattern expression, StatementPattern statement)
+        internal CommonForEachStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, StatementPattern statement)
+            : base(attributeLists)
         {
             _expression = expression;
             _statement = statement;
@@ -4244,6 +5223,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (CommonForEachStatementSyntax)node;
 
             if (_expression != null)
@@ -4253,14 +5234,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2489
     public partial class ForEachStatementPattern : CommonForEachStatementPattern
     {
         private readonly TypePattern _type;
         private readonly string _identifier;
         private readonly Action<ForEachStatementSyntax> _action;
 
-        internal ForEachStatementPattern(ExpressionPattern expression, StatementPattern statement, TypePattern type, string identifier, Action<ForEachStatementSyntax> action)
-            : base(expression, statement)
+        internal ForEachStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, StatementPattern statement, TypePattern type, string identifier, Action<ForEachStatementSyntax> action)
+            : base(attributeLists, expression, statement)
         {
             _type = type;
             _identifier = identifier;
@@ -4296,13 +5278,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2521
     public partial class ForEachVariableStatementPattern : CommonForEachStatementPattern
     {
         private readonly ExpressionPattern _variable;
         private readonly Action<ForEachVariableStatementSyntax> _action;
 
-        internal ForEachVariableStatementPattern(ExpressionPattern expression, StatementPattern statement, ExpressionPattern variable, Action<ForEachVariableStatementSyntax> action)
-            : base(expression, statement)
+        internal ForEachVariableStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, StatementPattern statement, ExpressionPattern variable, Action<ForEachVariableStatementSyntax> action)
+            : base(attributeLists, expression, statement)
         {
             _variable = variable;
             _action = action;
@@ -4335,17 +5318,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2557
     public partial class UsingStatementPattern : StatementPattern
     {
-        private readonly VariableDeclarationPattern _declaration;
-        private readonly ExpressionPattern _expression;
         private readonly StatementPattern _statement;
         private readonly Action<UsingStatementSyntax> _action;
 
-        internal UsingStatementPattern(VariableDeclarationPattern declaration, ExpressionPattern expression, StatementPattern statement, Action<UsingStatementSyntax> action)
+        internal UsingStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, StatementPattern statement, Action<UsingStatementSyntax> action)
+            : base(attributeLists)
         {
-            _declaration = declaration;
-            _expression = expression;
             _statement = statement;
             _action = action;
         }
@@ -4357,10 +5338,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is UsingStatementSyntax typed))
                 return false;
 
-            if (_declaration != null && !_declaration.Test(typed.Declaration, semanticModel))
-                return false;
-            if (_expression != null && !_expression.Test(typed.Expression, semanticModel))
-                return false;
             if (_statement != null && !_statement.Test(typed.Statement, semanticModel))
                 return false;
 
@@ -4369,12 +5346,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (UsingStatementSyntax)node;
 
-            if (_declaration != null)
-                _declaration.RunCallback(typed.Declaration, semanticModel);
-            if (_expression != null)
-                _expression.RunCallback(typed.Expression, semanticModel);
             if (_statement != null)
                 _statement.RunCallback(typed.Statement, semanticModel);
 
@@ -4383,13 +5358,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2579
     public partial class FixedStatementPattern : StatementPattern
     {
         private readonly VariableDeclarationPattern _declaration;
         private readonly StatementPattern _statement;
         private readonly Action<FixedStatementSyntax> _action;
 
-        internal FixedStatementPattern(VariableDeclarationPattern declaration, StatementPattern statement, Action<FixedStatementSyntax> action)
+        internal FixedStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, VariableDeclarationPattern declaration, StatementPattern statement, Action<FixedStatementSyntax> action)
+            : base(attributeLists)
         {
             _declaration = declaration;
             _statement = statement;
@@ -4413,6 +5390,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (FixedStatementSyntax)node;
 
             if (_declaration != null)
@@ -4425,13 +5404,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2594
     public partial class CheckedStatementPattern : StatementPattern
     {
         private readonly SyntaxKind _kind;
         private readonly BlockPattern _block;
         private readonly Action<CheckedStatementSyntax> _action;
 
-        internal CheckedStatementPattern(SyntaxKind kind, BlockPattern block, Action<CheckedStatementSyntax> action)
+        internal CheckedStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, SyntaxKind kind, BlockPattern block, Action<CheckedStatementSyntax> action)
+            : base(attributeLists)
         {
             _kind = kind;
             _block = block;
@@ -4455,6 +5436,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (CheckedStatementSyntax)node;
 
             if (_block != null)
@@ -4465,12 +5448,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2604
     public partial class UnsafeStatementPattern : StatementPattern
     {
         private readonly BlockPattern _block;
         private readonly Action<UnsafeStatementSyntax> _action;
 
-        internal UnsafeStatementPattern(BlockPattern block, Action<UnsafeStatementSyntax> action)
+        internal UnsafeStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, BlockPattern block, Action<UnsafeStatementSyntax> action)
+            : base(attributeLists)
         {
             _block = block;
             _action = action;
@@ -4491,6 +5476,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (UnsafeStatementSyntax)node;
 
             if (_block != null)
@@ -4501,13 +5488,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2612
     public partial class LockStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _expression;
         private readonly StatementPattern _statement;
         private readonly Action<LockStatementSyntax> _action;
 
-        internal LockStatementPattern(ExpressionPattern expression, StatementPattern statement, Action<LockStatementSyntax> action)
+        internal LockStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, StatementPattern statement, Action<LockStatementSyntax> action)
+            : base(attributeLists)
         {
             _expression = expression;
             _statement = statement;
@@ -4531,6 +5520,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (LockStatementSyntax)node;
 
             if (_expression != null)
@@ -4543,6 +5534,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2627
     public partial class IfStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _condition;
@@ -4550,7 +5542,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         private readonly ElseClausePattern _else;
         private readonly Action<IfStatementSyntax> _action;
 
-        internal IfStatementPattern(ExpressionPattern condition, StatementPattern statement, ElseClausePattern @else, Action<IfStatementSyntax> action)
+        internal IfStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern condition, StatementPattern statement, ElseClausePattern @else, Action<IfStatementSyntax> action)
+            : base(attributeLists)
         {
             _condition = condition;
             _statement = statement;
@@ -4577,6 +5570,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (IfStatementSyntax)node;
 
             if (_condition != null)
@@ -4591,6 +5586,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2684
     public partial class ElseClausePattern : PatternNode
     {
         private readonly StatementPattern _statement;
@@ -4627,13 +5623,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2703
     public partial class SwitchStatementPattern : StatementPattern
     {
         private readonly ExpressionPattern _expression;
         private readonly NodeListPattern<SwitchSectionPattern> _sections;
         private readonly Action<SwitchStatementSyntax> _action;
 
-        internal SwitchStatementPattern(ExpressionPattern expression, NodeListPattern<SwitchSectionPattern> sections, Action<SwitchStatementSyntax> action)
+        internal SwitchStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, ExpressionPattern expression, NodeListPattern<SwitchSectionPattern> sections, Action<SwitchStatementSyntax> action)
+            : base(attributeLists)
         {
             _expression = expression;
             _sections = sections;
@@ -4657,6 +5655,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (SwitchStatementSyntax)node;
 
             if (_expression != null)
@@ -4669,6 +5669,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2767
     public partial class SwitchSectionPattern : PatternNode
     {
         private readonly NodeListPattern<SwitchLabelPattern> _labels;
@@ -4711,6 +5712,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2790
     public abstract partial class SwitchLabelPattern : PatternNode
     {
 
@@ -4730,6 +5732,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2810
     public partial class CasePatternSwitchLabelPattern : SwitchLabelPattern
     {
         private readonly PatternPattern _pattern;
@@ -4772,6 +5775,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2834
     public partial class CaseSwitchLabelPattern : SwitchLabelPattern
     {
         private readonly ExpressionPattern _value;
@@ -4808,6 +5812,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2857
     public partial class DefaultSwitchLabelPattern : SwitchLabelPattern
     {
         private readonly Action<DefaultSwitchLabelSyntax> _action;
@@ -4838,6 +5843,99 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2874
+    public partial class SwitchExpressionPattern : ExpressionPattern
+    {
+        private readonly ExpressionPattern _governingExpression;
+        private readonly NodeListPattern<SwitchExpressionArmPattern> _arms;
+        private readonly Action<SwitchExpressionSyntax> _action;
+
+        internal SwitchExpressionPattern(ExpressionPattern governingExpression, NodeListPattern<SwitchExpressionArmPattern> arms, Action<SwitchExpressionSyntax> action)
+        {
+            _governingExpression = governingExpression;
+            _arms = arms;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is SwitchExpressionSyntax typed))
+                return false;
+
+            if (_governingExpression != null && !_governingExpression.Test(typed.GoverningExpression, semanticModel))
+                return false;
+            if (_arms != null && !_arms.Test(typed.Arms, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (SwitchExpressionSyntax)node;
+
+            if (_governingExpression != null)
+                _governingExpression.RunCallback(typed.GoverningExpression, semanticModel);
+            if (_arms != null)
+                _arms.RunCallback(typed.Arms, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2888
+    public partial class SwitchExpressionArmPattern : PatternNode
+    {
+        private readonly PatternPattern _pattern;
+        private readonly WhenClausePattern _whenClause;
+        private readonly ExpressionPattern _expression;
+        private readonly Action<SwitchExpressionArmSyntax> _action;
+
+        internal SwitchExpressionArmPattern(PatternPattern pattern, WhenClausePattern whenClause, ExpressionPattern expression, Action<SwitchExpressionArmSyntax> action)
+        {
+            _pattern = pattern;
+            _whenClause = whenClause;
+            _expression = expression;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is SwitchExpressionArmSyntax typed))
+                return false;
+
+            if (_pattern != null && !_pattern.Test(typed.Pattern, semanticModel))
+                return false;
+            if (_whenClause != null && !_whenClause.Test(typed.WhenClause, semanticModel))
+                return false;
+            if (_expression != null && !_expression.Test(typed.Expression, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (SwitchExpressionArmSyntax)node;
+
+            if (_pattern != null)
+                _pattern.RunCallback(typed.Pattern, semanticModel);
+            if (_whenClause != null)
+                _whenClause.RunCallback(typed.WhenClause, semanticModel);
+            if (_expression != null)
+                _expression.RunCallback(typed.Expression, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #2898
     public partial class TryStatementPattern : StatementPattern
     {
         private readonly BlockPattern _block;
@@ -4845,7 +5943,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         private readonly FinallyClausePattern _finally;
         private readonly Action<TryStatementSyntax> _action;
 
-        internal TryStatementPattern(BlockPattern block, NodeListPattern<CatchClausePattern> catches, FinallyClausePattern @finally, Action<TryStatementSyntax> action)
+        internal TryStatementPattern(NodeListPattern<AttributeListPattern> attributeLists, BlockPattern block, NodeListPattern<CatchClausePattern> catches, FinallyClausePattern @finally, Action<TryStatementSyntax> action)
+            : base(attributeLists)
         {
             _block = block;
             _catches = catches;
@@ -4872,6 +5971,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (TryStatementSyntax)node;
 
             if (_block != null)
@@ -4886,6 +5987,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2908
     public partial class CatchClausePattern : PatternNode
     {
         private readonly CatchDeclarationPattern _declaration;
@@ -4934,6 +6036,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2917
     public partial class CatchDeclarationPattern : PatternNode
     {
         private readonly TypePattern _type;
@@ -4974,6 +6077,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2930
     public partial class CatchFilterClausePattern : PatternNode
     {
         private readonly ExpressionPattern _filterExpression;
@@ -5010,6 +6114,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2943
     public partial class FinallyClausePattern : PatternNode
     {
         private readonly BlockPattern _block;
@@ -5046,6 +6151,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2952
     public partial class CompilationUnitPattern : PatternNode
     {
         private readonly NodeListPattern<ExternAliasDirectivePattern> _externs;
@@ -5100,6 +6206,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #2966
     public partial class ExternAliasDirectivePattern : PatternNode
     {
         private readonly string _identifier;
@@ -5134,15 +6241,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3001
     public partial class UsingDirectivePattern : PatternNode
     {
-        private readonly NameEqualsPattern _alias;
         private readonly NamePattern _name;
         private readonly Action<UsingDirectiveSyntax> _action;
 
-        internal UsingDirectivePattern(NameEqualsPattern alias, NamePattern name, Action<UsingDirectiveSyntax> action)
+        internal UsingDirectivePattern(NamePattern name, Action<UsingDirectiveSyntax> action)
         {
-            _alias = alias;
             _name = name;
             _action = action;
         }
@@ -5154,8 +6260,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is UsingDirectiveSyntax typed))
                 return false;
 
-            if (_alias != null && !_alias.Test(typed.Alias, semanticModel))
-                return false;
             if (_name != null && !_name.Test(typed.Name, semanticModel))
                 return false;
 
@@ -5166,8 +6270,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             var typed = (UsingDirectiveSyntax)node;
 
-            if (_alias != null)
-                _alias.RunCallback(typed.Alias, semanticModel);
             if (_name != null)
                 _name.RunCallback(typed.Name, semanticModel);
 
@@ -5176,11 +6278,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3015
     public abstract partial class MemberDeclarationPattern : PatternNode
     {
+        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
+        private readonly TokenListPattern _modifiers;
 
-        internal MemberDeclarationPattern()
+        internal MemberDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers)
         {
+            _attributeLists = attributeLists;
+            _modifiers = modifiers;
         }
 
         internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
@@ -5190,11 +6297,24 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is MemberDeclarationSyntax typed))
                 return false;
 
+            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
+                return false;
+            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
+                return false;
 
             return true;
         }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (MemberDeclarationSyntax)node;
+
+            if (_attributeLists != null)
+                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
+        }
     }
 
+    // #3030
     public partial class NamespaceDeclarationPattern : MemberDeclarationPattern
     {
         private readonly NamePattern _name;
@@ -5203,7 +6323,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         private readonly NodeListPattern<MemberDeclarationPattern> _members;
         private readonly Action<NamespaceDeclarationSyntax> _action;
 
-        internal NamespaceDeclarationPattern(NamePattern name, NodeListPattern<ExternAliasDirectivePattern> externs, NodeListPattern<UsingDirectivePattern> usings, NodeListPattern<MemberDeclarationPattern> members, Action<NamespaceDeclarationSyntax> action)
+        internal NamespaceDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, NamePattern name, NodeListPattern<ExternAliasDirectivePattern> externs, NodeListPattern<UsingDirectivePattern> usings, NodeListPattern<MemberDeclarationPattern> members, Action<NamespaceDeclarationSyntax> action)
+            : base(attributeLists, modifiers)
         {
             _name = name;
             _externs = externs;
@@ -5233,6 +6354,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (NamespaceDeclarationSyntax)node;
 
             if (_name != null)
@@ -5249,6 +6372,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3054
     public partial class AttributeListPattern : PatternNode
     {
         private readonly AttributeTargetSpecifierPattern _target;
@@ -5291,6 +6415,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3082
     public partial class AttributeTargetSpecifierPattern : PatternNode
     {
         private readonly string _identifier;
@@ -5325,6 +6450,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3099
     public partial class AttributePattern : PatternNode
     {
         private readonly NamePattern _name;
@@ -5367,6 +6493,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3111
     public partial class AttributeArgumentListPattern : PatternNode
     {
         private readonly NodeListPattern<AttributeArgumentPattern> _arguments;
@@ -5403,17 +6530,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3134
     public partial class AttributeArgumentPattern : PatternNode
     {
-        private readonly NameEqualsPattern _nameEquals;
-        private readonly NameColonPattern _nameColon;
         private readonly ExpressionPattern _expression;
         private readonly Action<AttributeArgumentSyntax> _action;
 
-        internal AttributeArgumentPattern(NameEqualsPattern nameEquals, NameColonPattern nameColon, ExpressionPattern expression, Action<AttributeArgumentSyntax> action)
+        internal AttributeArgumentPattern(ExpressionPattern expression, Action<AttributeArgumentSyntax> action)
         {
-            _nameEquals = nameEquals;
-            _nameColon = nameColon;
             _expression = expression;
             _action = action;
         }
@@ -5425,10 +6549,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is AttributeArgumentSyntax typed))
                 return false;
 
-            if (_nameEquals != null && !_nameEquals.Test(typed.NameEquals, semanticModel))
-                return false;
-            if (_nameColon != null && !_nameColon.Test(typed.NameColon, semanticModel))
-                return false;
             if (_expression != null && !_expression.Test(typed.Expression, semanticModel))
                 return false;
 
@@ -5439,10 +6559,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             var typed = (AttributeArgumentSyntax)node;
 
-            if (_nameEquals != null)
-                _nameEquals.RunCallback(typed.NameEquals, semanticModel);
-            if (_nameColon != null)
-                _nameColon.RunCallback(typed.NameColon, semanticModel);
             if (_expression != null)
                 _expression.RunCallback(typed.Expression, semanticModel);
 
@@ -5451,6 +6567,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3149
     public partial class NameEqualsPattern : PatternNode
     {
         private readonly IdentifierNamePattern _name;
@@ -5487,6 +6604,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3164
     public partial class TypeParameterListPattern : PatternNode
     {
         private readonly NodeListPattern<TypeParameterPattern> _parameters;
@@ -5523,6 +6641,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3187
     public partial class TypeParameterPattern : PatternNode
     {
         private readonly NodeListPattern<AttributeListPattern> _attributeLists;
@@ -5563,17 +6682,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3208
     public abstract partial class BaseTypeDeclarationPattern : MemberDeclarationPattern
     {
-        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
-        private readonly TokenListPattern _modifiers;
         private readonly string _identifier;
         private readonly BaseListPattern _baseList;
 
         internal BaseTypeDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, string identifier, BaseListPattern baseList)
+            : base(attributeLists, modifiers)
         {
-            _attributeLists = attributeLists;
-            _modifiers = modifiers;
             _identifier = identifier;
             _baseList = baseList;
         }
@@ -5585,10 +6702,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is BaseTypeDeclarationSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
-            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
-                return false;
             if (_identifier != null && _identifier != typed.Identifier.Text)
                 return false;
             if (_baseList != null && !_baseList.Test(typed.BaseList, semanticModel))
@@ -5599,15 +6712,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (BaseTypeDeclarationSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
             if (_baseList != null)
                 _baseList.RunCallback(typed.BaseList, semanticModel);
         }
     }
 
+    // #3242
     public abstract partial class TypeDeclarationPattern : BaseTypeDeclarationPattern
     {
         private readonly TypeParameterListPattern _typeParameterList;
@@ -5654,6 +6768,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3263
     public partial class ClassDeclarationPattern : TypeDeclarationPattern
     {
         private readonly Action<ClassDeclarationSyntax> _action;
@@ -5687,6 +6802,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3293
     public partial class StructDeclarationPattern : TypeDeclarationPattern
     {
         private readonly Action<StructDeclarationSyntax> _action;
@@ -5720,6 +6836,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3323
     public partial class InterfaceDeclarationPattern : TypeDeclarationPattern
     {
         private readonly Action<InterfaceDeclarationSyntax> _action;
@@ -5753,6 +6870,47 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3353
+    public partial class RecordDeclarationPattern : TypeDeclarationPattern
+    {
+        private readonly ParameterListPattern _parameterList;
+        private readonly Action<RecordDeclarationSyntax> _action;
+
+        internal RecordDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, string identifier, BaseListPattern baseList, TypeParameterListPattern typeParameterList, NodeListPattern<TypeParameterConstraintClausePattern> constraintClauses, NodeListPattern<MemberDeclarationPattern> members, ParameterListPattern parameterList, Action<RecordDeclarationSyntax> action)
+            : base(attributeLists, modifiers, identifier, baseList, typeParameterList, constraintClauses, members)
+        {
+            _parameterList = parameterList;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is RecordDeclarationSyntax typed))
+                return false;
+
+            if (_parameterList != null && !_parameterList.Test(typed.ParameterList, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            base.RunCallback(node, semanticModel);
+
+            var typed = (RecordDeclarationSyntax)node;
+
+            if (_parameterList != null)
+                _parameterList.RunCallback(typed.ParameterList, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #3378
     public partial class EnumDeclarationPattern : BaseTypeDeclarationPattern
     {
         private readonly NodeListPattern<EnumMemberDeclarationPattern> _members;
@@ -5792,10 +6950,9 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3414
     public partial class DelegateDeclarationPattern : MemberDeclarationPattern
     {
-        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
-        private readonly TokenListPattern _modifiers;
         private readonly TypePattern _returnType;
         private readonly string _identifier;
         private readonly TypeParameterListPattern _typeParameterList;
@@ -5804,9 +6961,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         private readonly Action<DelegateDeclarationSyntax> _action;
 
         internal DelegateDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern returnType, string identifier, TypeParameterListPattern typeParameterList, ParameterListPattern parameterList, NodeListPattern<TypeParameterConstraintClausePattern> constraintClauses, Action<DelegateDeclarationSyntax> action)
+            : base(attributeLists, modifiers)
         {
-            _attributeLists = attributeLists;
-            _modifiers = modifiers;
             _returnType = returnType;
             _identifier = identifier;
             _typeParameterList = typeParameterList;
@@ -5822,10 +6978,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is DelegateDeclarationSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
-            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
-                return false;
             if (_returnType != null && !_returnType.Test(typed.ReturnType, semanticModel))
                 return false;
             if (_identifier != null && _identifier != typed.Identifier.Text)
@@ -5842,10 +6994,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (DelegateDeclarationSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
             if (_returnType != null)
                 _returnType.RunCallback(typed.ReturnType, semanticModel);
             if (_typeParameterList != null)
@@ -5860,16 +7012,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3456
     public partial class EnumMemberDeclarationPattern : MemberDeclarationPattern
     {
-        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
         private readonly string _identifier;
         private readonly EqualsValueClausePattern _equalsValue;
         private readonly Action<EnumMemberDeclarationSyntax> _action;
 
-        internal EnumMemberDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, string identifier, EqualsValueClausePattern equalsValue, Action<EnumMemberDeclarationSyntax> action)
+        internal EnumMemberDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, string identifier, EqualsValueClausePattern equalsValue, Action<EnumMemberDeclarationSyntax> action)
+            : base(attributeLists, modifiers)
         {
-            _attributeLists = attributeLists;
             _identifier = identifier;
             _equalsValue = equalsValue;
             _action = action;
@@ -5882,8 +7034,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is EnumMemberDeclarationSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
             if (_identifier != null && _identifier != typed.Identifier.Text)
                 return false;
             if (_equalsValue != null && !_equalsValue.Test(typed.EqualsValue, semanticModel))
@@ -5894,10 +7044,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (EnumMemberDeclarationSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
             if (_equalsValue != null)
                 _equalsValue.RunCallback(typed.EqualsValue, semanticModel);
 
@@ -5906,6 +7056,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3468
     public partial class BaseListPattern : PatternNode
     {
         private readonly NodeListPattern<BaseTypePattern> _types;
@@ -5942,6 +7093,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3486
     public abstract partial class BaseTypePattern : PatternNode
     {
         private readonly TypePattern _type;
@@ -5973,6 +7125,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3494
     public partial class SimpleBaseTypePattern : BaseTypePattern
     {
         private readonly Action<SimpleBaseTypeSyntax> _action;
@@ -6006,6 +7159,47 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3500
+    public partial class PrimaryConstructorBaseTypePattern : BaseTypePattern
+    {
+        private readonly ArgumentListPattern _argumentList;
+        private readonly Action<PrimaryConstructorBaseTypeSyntax> _action;
+
+        internal PrimaryConstructorBaseTypePattern(TypePattern type, ArgumentListPattern argumentList, Action<PrimaryConstructorBaseTypeSyntax> action)
+            : base(type)
+        {
+            _argumentList = argumentList;
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is PrimaryConstructorBaseTypeSyntax typed))
+                return false;
+
+            if (_argumentList != null && !_argumentList.Test(typed.ArgumentList, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            base.RunCallback(node, semanticModel);
+
+            var typed = (PrimaryConstructorBaseTypeSyntax)node;
+
+            if (_argumentList != null)
+                _argumentList.RunCallback(typed.ArgumentList, semanticModel);
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #3506
     public partial class TypeParameterConstraintClausePattern : PatternNode
     {
         private readonly IdentifierNamePattern _name;
@@ -6048,6 +7242,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3532
     public abstract partial class TypeParameterConstraintPattern : PatternNode
     {
 
@@ -6067,6 +7262,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3537
     public partial class ConstructorConstraintPattern : TypeParameterConstraintPattern
     {
         private readonly Action<ConstructorConstraintSyntax> _action;
@@ -6097,6 +7293,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3561
     public partial class ClassOrStructConstraintPattern : TypeParameterConstraintPattern
     {
         private readonly SyntaxKind _kind;
@@ -6131,6 +7328,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3581
     public partial class TypeConstraintPattern : TypeParameterConstraintPattern
     {
         private readonly TypePattern _type;
@@ -6167,16 +7365,45 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3592
+    public partial class DefaultConstraintPattern : TypeParameterConstraintPattern
+    {
+        private readonly Action<DefaultConstraintSyntax> _action;
+
+        internal DefaultConstraintPattern(Action<DefaultConstraintSyntax> action)
+        {
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is DefaultConstraintSyntax typed))
+                return false;
+
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (DefaultConstraintSyntax)node;
+
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #3604
     public abstract partial class BaseFieldDeclarationPattern : MemberDeclarationPattern
     {
-        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
-        private readonly TokenListPattern _modifiers;
         private readonly VariableDeclarationPattern _declaration;
 
         internal BaseFieldDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, VariableDeclarationPattern declaration)
+            : base(attributeLists, modifiers)
         {
-            _attributeLists = attributeLists;
-            _modifiers = modifiers;
             _declaration = declaration;
         }
 
@@ -6187,10 +7414,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is BaseFieldDeclarationSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
-            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
-                return false;
             if (_declaration != null && !_declaration.Test(typed.Declaration, semanticModel))
                 return false;
 
@@ -6199,15 +7422,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (BaseFieldDeclarationSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
             if (_declaration != null)
                 _declaration.RunCallback(typed.Declaration, semanticModel);
         }
     }
 
+    // #3610
     public partial class FieldDeclarationPattern : BaseFieldDeclarationPattern
     {
         private readonly Action<FieldDeclarationSyntax> _action;
@@ -6241,6 +7465,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3619
     public partial class EventFieldDeclarationPattern : BaseFieldDeclarationPattern
     {
         private readonly Action<EventFieldDeclarationSyntax> _action;
@@ -6274,6 +7499,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3631
     public partial class ExplicitInterfaceSpecifierPattern : PatternNode
     {
         private readonly NamePattern _name;
@@ -6310,21 +7536,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3638
     public abstract partial class BaseMethodDeclarationPattern : MemberDeclarationPattern
     {
-        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
-        private readonly TokenListPattern _modifiers;
         private readonly ParameterListPattern _parameterList;
-        private readonly BlockPattern _body;
-        private readonly ArrowExpressionClausePattern _expressionBody;
 
-        internal BaseMethodDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, BlockPattern body, ArrowExpressionClausePattern expressionBody)
+        internal BaseMethodDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList)
+            : base(attributeLists, modifiers)
         {
-            _attributeLists = attributeLists;
-            _modifiers = modifiers;
             _parameterList = parameterList;
-            _body = body;
-            _expressionBody = expressionBody;
         }
 
         internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
@@ -6334,15 +7554,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is BaseMethodDeclarationSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
-            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
-                return false;
             if (_parameterList != null && !_parameterList.Test(typed.ParameterList, semanticModel))
-                return false;
-            if (_body != null && !_body.Test(typed.Body, semanticModel))
-                return false;
-            if (_expressionBody != null && !_expressionBody.Test(typed.ExpressionBody, semanticModel))
                 return false;
 
             return true;
@@ -6350,19 +7562,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (BaseMethodDeclarationSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
             if (_parameterList != null)
                 _parameterList.RunCallback(typed.ParameterList, semanticModel);
-            if (_body != null)
-                _body.RunCallback(typed.Body, semanticModel);
-            if (_expressionBody != null)
-                _expressionBody.RunCallback(typed.ExpressionBody, semanticModel);
         }
     }
 
+    // #3660
     public partial class MethodDeclarationPattern : BaseMethodDeclarationPattern
     {
         private readonly TypePattern _returnType;
@@ -6372,8 +7581,8 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         private readonly NodeListPattern<TypeParameterConstraintClausePattern> _constraintClauses;
         private readonly Action<MethodDeclarationSyntax> _action;
 
-        internal MethodDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, BlockPattern body, ArrowExpressionClausePattern expressionBody, TypePattern returnType, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier, string identifier, TypeParameterListPattern typeParameterList, NodeListPattern<TypeParameterConstraintClausePattern> constraintClauses, Action<MethodDeclarationSyntax> action)
-            : base(attributeLists, modifiers, parameterList, body, expressionBody)
+        internal MethodDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, TypePattern returnType, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier, string identifier, TypeParameterListPattern typeParameterList, NodeListPattern<TypeParameterConstraintClausePattern> constraintClauses, Action<MethodDeclarationSyntax> action)
+            : base(attributeLists, modifiers, parameterList)
         {
             _returnType = returnType;
             _explicitInterfaceSpecifier = explicitInterfaceSpecifier;
@@ -6424,13 +7633,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3699
     public partial class OperatorDeclarationPattern : BaseMethodDeclarationPattern
     {
         private readonly TypePattern _returnType;
         private readonly Action<OperatorDeclarationSyntax> _action;
 
-        internal OperatorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, BlockPattern body, ArrowExpressionClausePattern expressionBody, TypePattern returnType, Action<OperatorDeclarationSyntax> action)
-            : base(attributeLists, modifiers, parameterList, body, expressionBody)
+        internal OperatorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, TypePattern returnType, Action<OperatorDeclarationSyntax> action)
+            : base(attributeLists, modifiers, parameterList)
         {
             _returnType = returnType;
             _action = action;
@@ -6463,13 +7673,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3760
     public partial class ConversionOperatorDeclarationPattern : BaseMethodDeclarationPattern
     {
         private readonly TypePattern _type;
         private readonly Action<ConversionOperatorDeclarationSyntax> _action;
 
-        internal ConversionOperatorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, BlockPattern body, ArrowExpressionClausePattern expressionBody, TypePattern type, Action<ConversionOperatorDeclarationSyntax> action)
-            : base(attributeLists, modifiers, parameterList, body, expressionBody)
+        internal ConversionOperatorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, TypePattern type, Action<ConversionOperatorDeclarationSyntax> action)
+            : base(attributeLists, modifiers, parameterList)
         {
             _type = type;
             _action = action;
@@ -6502,14 +7713,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3800
     public partial class ConstructorDeclarationPattern : BaseMethodDeclarationPattern
     {
         private readonly string _identifier;
         private readonly ConstructorInitializerPattern _initializer;
         private readonly Action<ConstructorDeclarationSyntax> _action;
 
-        internal ConstructorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, BlockPattern body, ArrowExpressionClausePattern expressionBody, string identifier, ConstructorInitializerPattern initializer, Action<ConstructorDeclarationSyntax> action)
-            : base(attributeLists, modifiers, parameterList, body, expressionBody)
+        internal ConstructorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, string identifier, ConstructorInitializerPattern initializer, Action<ConstructorDeclarationSyntax> action)
+            : base(attributeLists, modifiers, parameterList)
         {
             _identifier = identifier;
             _initializer = initializer;
@@ -6545,6 +7757,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3828
     public partial class ConstructorInitializerPattern : PatternNode
     {
         private readonly SyntaxKind _kind;
@@ -6585,13 +7798,14 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3849
     public partial class DestructorDeclarationPattern : BaseMethodDeclarationPattern
     {
         private readonly string _identifier;
         private readonly Action<DestructorDeclarationSyntax> _action;
 
-        internal DestructorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, BlockPattern body, ArrowExpressionClausePattern expressionBody, string identifier, Action<DestructorDeclarationSyntax> action)
-            : base(attributeLists, modifiers, parameterList, body, expressionBody)
+        internal DestructorDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, ParameterListPattern parameterList, string identifier, Action<DestructorDeclarationSyntax> action)
+            : base(attributeLists, modifiers, parameterList)
         {
             _identifier = identifier;
             _action = action;
@@ -6622,18 +7836,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3882
     public abstract partial class BasePropertyDeclarationPattern : MemberDeclarationPattern
     {
-        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
-        private readonly TokenListPattern _modifiers;
         private readonly TypePattern _type;
         private readonly ExplicitInterfaceSpecifierPattern _explicitInterfaceSpecifier;
         private readonly AccessorListPattern _accessorList;
 
         internal BasePropertyDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier, AccessorListPattern accessorList)
+            : base(attributeLists, modifiers)
         {
-            _attributeLists = attributeLists;
-            _modifiers = modifiers;
             _type = type;
             _explicitInterfaceSpecifier = explicitInterfaceSpecifier;
             _accessorList = accessorList;
@@ -6646,10 +7858,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is BasePropertyDeclarationSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
-            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
-                return false;
             if (_type != null && !_type.Test(typed.Type, semanticModel))
                 return false;
             if (_explicitInterfaceSpecifier != null && !_explicitInterfaceSpecifier.Test(typed.ExplicitInterfaceSpecifier, semanticModel))
@@ -6662,10 +7870,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (BasePropertyDeclarationSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
             if (_type != null)
                 _type.RunCallback(typed.Type, semanticModel);
             if (_explicitInterfaceSpecifier != null)
@@ -6675,19 +7883,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3898
     public partial class PropertyDeclarationPattern : BasePropertyDeclarationPattern
     {
         private readonly string _identifier;
-        private readonly ArrowExpressionClausePattern _expressionBody;
-        private readonly EqualsValueClausePattern _initializer;
         private readonly Action<PropertyDeclarationSyntax> _action;
 
-        internal PropertyDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier, AccessorListPattern accessorList, string identifier, ArrowExpressionClausePattern expressionBody, EqualsValueClausePattern initializer, Action<PropertyDeclarationSyntax> action)
+        internal PropertyDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier, AccessorListPattern accessorList, string identifier, Action<PropertyDeclarationSyntax> action)
             : base(attributeLists, modifiers, type, explicitInterfaceSpecifier, accessorList)
         {
             _identifier = identifier;
-            _expressionBody = expressionBody;
-            _initializer = initializer;
             _action = action;
         }
 
@@ -6700,10 +7905,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
             if (_identifier != null && _identifier != typed.Identifier.Text)
                 return false;
-            if (_expressionBody != null && !_expressionBody.Test(typed.ExpressionBody, semanticModel))
-                return false;
-            if (_initializer != null && !_initializer.Test(typed.Initializer, semanticModel))
-                return false;
 
             return true;
         }
@@ -6714,16 +7915,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
             var typed = (PropertyDeclarationSyntax)node;
 
-            if (_expressionBody != null)
-                _expressionBody.RunCallback(typed.ExpressionBody, semanticModel);
-            if (_initializer != null)
-                _initializer.RunCallback(typed.Initializer, semanticModel);
 
             if (_action != null)
                 _action(typed);
         }
     }
 
+    // #3923
     public partial class ArrowExpressionClausePattern : PatternNode
     {
         private readonly ExpressionPattern _expression;
@@ -6760,6 +7958,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3933
     public partial class EventDeclarationPattern : BasePropertyDeclarationPattern
     {
         private readonly string _identifier;
@@ -6797,17 +7996,16 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3955
     public partial class IndexerDeclarationPattern : BasePropertyDeclarationPattern
     {
         private readonly BracketedParameterListPattern _parameterList;
-        private readonly ArrowExpressionClausePattern _expressionBody;
         private readonly Action<IndexerDeclarationSyntax> _action;
 
-        internal IndexerDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier, AccessorListPattern accessorList, BracketedParameterListPattern parameterList, ArrowExpressionClausePattern expressionBody, Action<IndexerDeclarationSyntax> action)
+        internal IndexerDeclarationPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier, AccessorListPattern accessorList, BracketedParameterListPattern parameterList, Action<IndexerDeclarationSyntax> action)
             : base(attributeLists, modifiers, type, explicitInterfaceSpecifier, accessorList)
         {
             _parameterList = parameterList;
-            _expressionBody = expressionBody;
             _action = action;
         }
 
@@ -6819,8 +8017,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
                 return false;
 
             if (_parameterList != null && !_parameterList.Test(typed.ParameterList, semanticModel))
-                return false;
-            if (_expressionBody != null && !_expressionBody.Test(typed.ExpressionBody, semanticModel))
                 return false;
 
             return true;
@@ -6834,14 +8030,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
             if (_parameterList != null)
                 _parameterList.RunCallback(typed.ParameterList, semanticModel);
-            if (_expressionBody != null)
-                _expressionBody.RunCallback(typed.ExpressionBody, semanticModel);
 
             if (_action != null)
                 _action(typed);
         }
     }
 
+    // #3979
     public partial class AccessorListPattern : PatternNode
     {
         private readonly NodeListPattern<AccessorDeclarationPattern> _accessors;
@@ -6878,22 +8073,19 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #3989
     public partial class AccessorDeclarationPattern : PatternNode
     {
         private readonly SyntaxKind _kind;
         private readonly NodeListPattern<AttributeListPattern> _attributeLists;
         private readonly TokenListPattern _modifiers;
-        private readonly BlockPattern _body;
-        private readonly ArrowExpressionClausePattern _expressionBody;
         private readonly Action<AccessorDeclarationSyntax> _action;
 
-        internal AccessorDeclarationPattern(SyntaxKind kind, NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, BlockPattern body, ArrowExpressionClausePattern expressionBody, Action<AccessorDeclarationSyntax> action)
+        internal AccessorDeclarationPattern(SyntaxKind kind, NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, Action<AccessorDeclarationSyntax> action)
         {
             _kind = kind;
             _attributeLists = attributeLists;
             _modifiers = modifiers;
-            _body = body;
-            _expressionBody = expressionBody;
             _action = action;
         }
 
@@ -6910,10 +8102,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
                 return false;
             if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
                 return false;
-            if (_body != null && !_body.Test(typed.Body, semanticModel))
-                return false;
-            if (_expressionBody != null && !_expressionBody.Test(typed.ExpressionBody, semanticModel))
-                return false;
 
             return true;
         }
@@ -6924,16 +8112,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
             if (_attributeLists != null)
                 _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
-            if (_body != null)
-                _body.RunCallback(typed.Body, semanticModel);
-            if (_expressionBody != null)
-                _expressionBody.RunCallback(typed.ExpressionBody, semanticModel);
 
             if (_action != null)
                 _action(typed);
         }
     }
 
+    // #4038
     public abstract partial class BaseParameterListPattern : PatternNode
     {
         private readonly NodeListPattern<ParameterPattern> _parameters;
@@ -6965,6 +8150,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #4048
     public partial class ParameterListPattern : BaseParameterListPattern
     {
         private readonly Action<ParameterListSyntax> _action;
@@ -6998,6 +8184,7 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #4067
     public partial class BracketedParameterListPattern : BaseParameterListPattern
     {
         private readonly Action<BracketedParameterListSyntax> _action;
@@ -7031,20 +8218,58 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
-    public partial class ParameterPattern : PatternNode
+    // #4086
+    public abstract partial class BaseParameterPattern : PatternNode
     {
         private readonly NodeListPattern<AttributeListPattern> _attributeLists;
         private readonly TokenListPattern _modifiers;
         private readonly TypePattern _type;
+
+        internal BaseParameterPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type)
+        {
+            _attributeLists = attributeLists;
+            _modifiers = modifiers;
+            _type = type;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is BaseParameterSyntax typed))
+                return false;
+
+            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
+                return false;
+            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
+                return false;
+            if (_type != null && !_type.Test(typed.Type, semanticModel))
+                return false;
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            var typed = (BaseParameterSyntax)node;
+
+            if (_attributeLists != null)
+                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
+            if (_type != null)
+                _type.RunCallback(typed.Type, semanticModel);
+        }
+    }
+
+    // #4102
+    public partial class ParameterPattern : BaseParameterPattern
+    {
         private readonly string _identifier;
         private readonly EqualsValueClausePattern _default;
         private readonly Action<ParameterSyntax> _action;
 
         internal ParameterPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, string identifier, EqualsValueClausePattern @default, Action<ParameterSyntax> action)
+            : base(attributeLists, modifiers, type)
         {
-            _attributeLists = attributeLists;
-            _modifiers = modifiers;
-            _type = type;
             _identifier = identifier;
             _default = @default;
             _action = action;
@@ -7057,12 +8282,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is ParameterSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
-            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
-                return false;
-            if (_type != null && !_type.Test(typed.Type, semanticModel))
-                return false;
             if (_identifier != null && _identifier != typed.Identifier.Text)
                 return false;
             if (_default != null && !_default.Test(typed.Default, semanticModel))
@@ -7073,12 +8292,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (ParameterSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
-            if (_type != null)
-                _type.RunCallback(typed.Type, semanticModel);
             if (_default != null)
                 _default.RunCallback(typed.Default, semanticModel);
 
@@ -7087,17 +8304,49 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         }
     }
 
+    // #4127
+    public partial class FunctionPointerParameterPattern : BaseParameterPattern
+    {
+        private readonly Action<FunctionPointerParameterSyntax> _action;
+
+        internal FunctionPointerParameterPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, Action<FunctionPointerParameterSyntax> action)
+            : base(attributeLists, modifiers, type)
+        {
+            _action = action;
+        }
+
+        internal override bool Test(SyntaxNode node, SemanticModel semanticModel)
+        {
+            if (!base.Test(node, semanticModel))
+                return false;
+            if (!(node is FunctionPointerParameterSyntax typed))
+                return false;
+
+
+            return true;
+        }
+
+        internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
+        {
+            base.RunCallback(node, semanticModel);
+
+            var typed = (FunctionPointerParameterSyntax)node;
+
+
+            if (_action != null)
+                _action(typed);
+        }
+    }
+
+    // #4144
     public partial class IncompleteMemberPattern : MemberDeclarationPattern
     {
-        private readonly NodeListPattern<AttributeListPattern> _attributeLists;
-        private readonly TokenListPattern _modifiers;
         private readonly TypePattern _type;
         private readonly Action<IncompleteMemberSyntax> _action;
 
         internal IncompleteMemberPattern(NodeListPattern<AttributeListPattern> attributeLists, TokenListPattern modifiers, TypePattern type, Action<IncompleteMemberSyntax> action)
+            : base(attributeLists, modifiers)
         {
-            _attributeLists = attributeLists;
-            _modifiers = modifiers;
             _type = type;
             _action = action;
         }
@@ -7109,10 +8358,6 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
             if (!(node is IncompleteMemberSyntax typed))
                 return false;
 
-            if (_attributeLists != null && !_attributeLists.Test(typed.AttributeLists, semanticModel))
-                return false;
-            if (_modifiers != null && !_modifiers.Test(typed.Modifiers, semanticModel))
-                return false;
             if (_type != null && !_type.Test(typed.Type, semanticModel))
                 return false;
 
@@ -7121,10 +8366,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
 
         internal override void RunCallback(SyntaxNode node, SemanticModel semanticModel)
         {
+            base.RunCallback(node, semanticModel);
+
             var typed = (IncompleteMemberSyntax)node;
 
-            if (_attributeLists != null)
-                _attributeLists.RunCallback(typed.AttributeLists, semanticModel);
             if (_type != null)
                 _type.RunCallback(typed.Type, semanticModel);
 
@@ -7180,6 +8425,36 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         public static PointerTypePattern PointerType(TypePattern elementType = null, Action<PointerTypeSyntax> action = null)
         {
             return new PointerTypePattern(elementType, action);
+        }
+        public static FunctionPointerTypePattern FunctionPointerType(FunctionPointerCallingConventionPattern callingConvention = null, FunctionPointerParameterListPattern parameterList = null, Action<FunctionPointerTypeSyntax> action = null)
+        {
+            return new FunctionPointerTypePattern(callingConvention, parameterList, action);
+        }
+        public static FunctionPointerParameterListPattern FunctionPointerParameterList(IEnumerable<FunctionPointerParameterPattern> parameters = null, Action<FunctionPointerParameterListSyntax> action = null)
+        {
+            return new FunctionPointerParameterListPattern(NodeList(parameters), action);
+        }
+
+        public static FunctionPointerParameterListPattern FunctionPointerParameterList(params FunctionPointerParameterPattern[] parameters)
+        {
+            return new FunctionPointerParameterListPattern(NodeList(parameters), null);
+        }
+        public static FunctionPointerCallingConventionPattern FunctionPointerCallingConvention(FunctionPointerUnmanagedCallingConventionListPattern unmanagedCallingConventionList = null, Action<FunctionPointerCallingConventionSyntax> action = null)
+        {
+            return new FunctionPointerCallingConventionPattern(unmanagedCallingConventionList, action);
+        }
+        public static FunctionPointerUnmanagedCallingConventionListPattern FunctionPointerUnmanagedCallingConventionList(IEnumerable<FunctionPointerUnmanagedCallingConventionPattern> callingConventions = null, Action<FunctionPointerUnmanagedCallingConventionListSyntax> action = null)
+        {
+            return new FunctionPointerUnmanagedCallingConventionListPattern(NodeList(callingConventions), action);
+        }
+
+        public static FunctionPointerUnmanagedCallingConventionListPattern FunctionPointerUnmanagedCallingConventionList(params FunctionPointerUnmanagedCallingConventionPattern[] callingConventions)
+        {
+            return new FunctionPointerUnmanagedCallingConventionListPattern(NodeList(callingConventions), null);
+        }
+        public static FunctionPointerUnmanagedCallingConventionPattern FunctionPointerUnmanagedCallingConvention(string name = null, Action<FunctionPointerUnmanagedCallingConventionSyntax> action = null)
+        {
+            return new FunctionPointerUnmanagedCallingConventionPattern(name, action);
         }
         public static NullableTypePattern NullableType(TypePattern elementType = null, Action<NullableTypeSyntax> action = null)
         {
@@ -7246,6 +8521,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         public static ElementBindingExpressionPattern ElementBindingExpression(BracketedArgumentListPattern argumentList = null, Action<ElementBindingExpressionSyntax> action = null)
         {
             return new ElementBindingExpressionPattern(argumentList, action);
+        }
+        public static RangeExpressionPattern RangeExpression(ExpressionPattern leftOperand = null, ExpressionPattern rightOperand = null, Action<RangeExpressionSyntax> action = null)
+        {
+            return new RangeExpressionPattern(leftOperand, rightOperand, action);
         }
         public static ImplicitElementAccessPattern ImplicitElementAccess(BracketedArgumentListPattern argumentList = null, Action<ImplicitElementAccessSyntax> action = null)
         {
@@ -7345,21 +8624,21 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new CastExpressionPattern(type, expression, action);
         }
-        public static AnonymousMethodExpressionPattern AnonymousMethodExpression(PatternNode body = null, ParameterListPattern parameterList = null, Action<AnonymousMethodExpressionSyntax> action = null)
+        public static AnonymousMethodExpressionPattern AnonymousMethodExpression(IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, Action<AnonymousMethodExpressionSyntax> action = null)
         {
-            return new AnonymousMethodExpressionPattern(body, parameterList, action);
+            return new AnonymousMethodExpressionPattern(TokenList(modifiers), parameterList, action);
         }
-        public static SimpleLambdaExpressionPattern SimpleLambdaExpression(PatternNode body = null, ParameterPattern parameter = null, Action<SimpleLambdaExpressionSyntax> action = null)
+        public static SimpleLambdaExpressionPattern SimpleLambdaExpression(IEnumerable<string> modifiers = null, ParameterPattern parameter = null, Action<SimpleLambdaExpressionSyntax> action = null)
         {
-            return new SimpleLambdaExpressionPattern(body, parameter, action);
+            return new SimpleLambdaExpressionPattern(TokenList(modifiers), parameter, action);
         }
         public static RefExpressionPattern RefExpression(ExpressionPattern expression = null, Action<RefExpressionSyntax> action = null)
         {
             return new RefExpressionPattern(expression, action);
         }
-        public static ParenthesizedLambdaExpressionPattern ParenthesizedLambdaExpression(PatternNode body = null, ParameterListPattern parameterList = null, Action<ParenthesizedLambdaExpressionSyntax> action = null)
+        public static ParenthesizedLambdaExpressionPattern ParenthesizedLambdaExpression(IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, Action<ParenthesizedLambdaExpressionSyntax> action = null)
         {
-            return new ParenthesizedLambdaExpressionPattern(body, parameterList, action);
+            return new ParenthesizedLambdaExpressionPattern(TokenList(modifiers), parameterList, action);
         }
         public static InitializerExpressionPattern InitializerExpression(SyntaxKind kind = default(SyntaxKind), IEnumerable<ExpressionPattern> expressions = null, Action<InitializerExpressionSyntax> action = null)
         {
@@ -7370,9 +8649,17 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new InitializerExpressionPattern(kind, NodeList(expressions), null);
         }
-        public static ObjectCreationExpressionPattern ObjectCreationExpression(TypePattern type = null, ArgumentListPattern argumentList = null, InitializerExpressionPattern initializer = null, Action<ObjectCreationExpressionSyntax> action = null)
+        public static ImplicitObjectCreationExpressionPattern ImplicitObjectCreationExpression(ArgumentListPattern argumentList = null, InitializerExpressionPattern initializer = null, Action<ImplicitObjectCreationExpressionSyntax> action = null)
         {
-            return new ObjectCreationExpressionPattern(type, argumentList, initializer, action);
+            return new ImplicitObjectCreationExpressionPattern(argumentList, initializer, action);
+        }
+        public static ObjectCreationExpressionPattern ObjectCreationExpression(ArgumentListPattern argumentList = null, InitializerExpressionPattern initializer = null, TypePattern type = null, Action<ObjectCreationExpressionSyntax> action = null)
+        {
+            return new ObjectCreationExpressionPattern(argumentList, initializer, type, action);
+        }
+        public static WithExpressionPattern WithExpression(ExpressionPattern expression = null, InitializerExpressionPattern initializer = null, Action<WithExpressionSyntax> action = null)
+        {
+            return new WithExpressionPattern(expression, initializer, action);
         }
         public static AnonymousObjectMemberDeclaratorPattern AnonymousObjectMemberDeclarator(NameEqualsPattern nameEquals = null, ExpressionPattern expression = null, Action<AnonymousObjectMemberDeclaratorSyntax> action = null)
         {
@@ -7395,9 +8682,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new ImplicitArrayCreationExpressionPattern(initializer, action);
         }
-        public static StackAllocArrayCreationExpressionPattern StackAllocArrayCreationExpression(TypePattern type = null, Action<StackAllocArrayCreationExpressionSyntax> action = null)
+        public static StackAllocArrayCreationExpressionPattern StackAllocArrayCreationExpression(TypePattern type = null, InitializerExpressionPattern initializer = null, Action<StackAllocArrayCreationExpressionSyntax> action = null)
         {
-            return new StackAllocArrayCreationExpressionPattern(type, action);
+            return new StackAllocArrayCreationExpressionPattern(type, initializer, action);
+        }
+        public static ImplicitStackAllocArrayCreationExpressionPattern ImplicitStackAllocArrayCreationExpression(InitializerExpressionPattern initializer = null, Action<ImplicitStackAllocArrayCreationExpressionSyntax> action = null)
+        {
+            return new ImplicitStackAllocArrayCreationExpressionPattern(initializer, action);
         }
         public static QueryExpressionPattern QueryExpression(FromClausePattern fromClause = null, QueryBodyPattern body = null, Action<QueryExpressionSyntax> action = null)
         {
@@ -7477,13 +8768,67 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new WhenClausePattern(condition, action);
         }
+        public static DiscardPatternPattern DiscardPattern(Action<DiscardPatternSyntax> action = null)
+        {
+            return new DiscardPatternPattern(action);
+        }
         public static DeclarationPatternPattern DeclarationPattern(TypePattern type = null, VariableDesignationPattern designation = null, Action<DeclarationPatternSyntax> action = null)
         {
             return new DeclarationPatternPattern(type, designation, action);
         }
+        public static VarPatternPattern VarPattern(VariableDesignationPattern designation = null, Action<VarPatternSyntax> action = null)
+        {
+            return new VarPatternPattern(designation, action);
+        }
+        public static RecursivePatternPattern RecursivePattern(TypePattern type = null, PositionalPatternClausePattern positionalPatternClause = null, PropertyPatternClausePattern propertyPatternClause = null, VariableDesignationPattern designation = null, Action<RecursivePatternSyntax> action = null)
+        {
+            return new RecursivePatternPattern(type, positionalPatternClause, propertyPatternClause, designation, action);
+        }
+        public static PositionalPatternClausePattern PositionalPatternClause(IEnumerable<SubpatternPattern> subpatterns = null, Action<PositionalPatternClauseSyntax> action = null)
+        {
+            return new PositionalPatternClausePattern(NodeList(subpatterns), action);
+        }
+
+        public static PositionalPatternClausePattern PositionalPatternClause(params SubpatternPattern[] subpatterns)
+        {
+            return new PositionalPatternClausePattern(NodeList(subpatterns), null);
+        }
+        public static PropertyPatternClausePattern PropertyPatternClause(IEnumerable<SubpatternPattern> subpatterns = null, Action<PropertyPatternClauseSyntax> action = null)
+        {
+            return new PropertyPatternClausePattern(NodeList(subpatterns), action);
+        }
+
+        public static PropertyPatternClausePattern PropertyPatternClause(params SubpatternPattern[] subpatterns)
+        {
+            return new PropertyPatternClausePattern(NodeList(subpatterns), null);
+        }
+        public static SubpatternPattern Subpattern(NameColonPattern nameColon = null, PatternPattern pattern = null, Action<SubpatternSyntax> action = null)
+        {
+            return new SubpatternPattern(nameColon, pattern, action);
+        }
         public static ConstantPatternPattern ConstantPattern(ExpressionPattern expression = null, Action<ConstantPatternSyntax> action = null)
         {
             return new ConstantPatternPattern(expression, action);
+        }
+        public static ParenthesizedPatternPattern ParenthesizedPattern(PatternPattern pattern = null, Action<ParenthesizedPatternSyntax> action = null)
+        {
+            return new ParenthesizedPatternPattern(pattern, action);
+        }
+        public static RelationalPatternPattern RelationalPattern(ExpressionPattern expression = null, Action<RelationalPatternSyntax> action = null)
+        {
+            return new RelationalPatternPattern(expression, action);
+        }
+        public static TypePatternPattern TypePattern(TypePattern type = null, Action<TypePatternSyntax> action = null)
+        {
+            return new TypePatternPattern(type, action);
+        }
+        public static BinaryPatternPattern BinaryPattern(SyntaxKind kind = default(SyntaxKind), PatternPattern left = null, PatternPattern right = null, Action<BinaryPatternSyntax> action = null)
+        {
+            return new BinaryPatternPattern(kind, left, right, action);
+        }
+        public static UnaryPatternPattern UnaryPattern(PatternPattern pattern = null, Action<UnaryPatternSyntax> action = null)
+        {
+            return new UnaryPatternPattern(pattern, action);
         }
         public static InterpolatedStringTextPattern InterpolatedStringText(Action<InterpolatedStringTextSyntax> action = null)
         {
@@ -7501,26 +8846,26 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new InterpolationFormatClausePattern(action);
         }
-        public static GlobalStatementPattern GlobalStatement(StatementPattern statement = null, Action<GlobalStatementSyntax> action = null)
+        public static GlobalStatementPattern GlobalStatement(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, StatementPattern statement = null, Action<GlobalStatementSyntax> action = null)
         {
-            return new GlobalStatementPattern(statement, action);
+            return new GlobalStatementPattern(NodeList(attributeLists), TokenList(modifiers), statement, action);
         }
-        public static BlockPattern Block(IEnumerable<StatementPattern> statements = null, Action<BlockSyntax> action = null)
+        public static BlockPattern Block(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<StatementPattern> statements = null, Action<BlockSyntax> action = null)
         {
-            return new BlockPattern(NodeList(statements), action);
+            return new BlockPattern(NodeList(attributeLists), NodeList(statements), action);
         }
 
         public static BlockPattern Block(params StatementPattern[] statements)
         {
-            return new BlockPattern(NodeList(statements), null);
+            return new BlockPattern(null, NodeList(statements), null);
         }
-        public static LocalFunctionStatementPattern LocalFunctionStatement(IEnumerable<string> modifiers = null, TypePattern returnType = null, string identifier = null, TypeParameterListPattern typeParameterList = null, ParameterListPattern parameterList = null, IEnumerable<TypeParameterConstraintClausePattern> constraintClauses = null, BlockPattern body = null, ArrowExpressionClausePattern expressionBody = null, Action<LocalFunctionStatementSyntax> action = null)
+        public static LocalFunctionStatementPattern LocalFunctionStatement(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern returnType = null, string identifier = null, TypeParameterListPattern typeParameterList = null, ParameterListPattern parameterList = null, IEnumerable<TypeParameterConstraintClausePattern> constraintClauses = null, Action<LocalFunctionStatementSyntax> action = null)
         {
-            return new LocalFunctionStatementPattern(TokenList(modifiers), returnType, identifier, typeParameterList, parameterList, NodeList(constraintClauses), body, expressionBody, action);
+            return new LocalFunctionStatementPattern(NodeList(attributeLists), TokenList(modifiers), returnType, identifier, typeParameterList, parameterList, NodeList(constraintClauses), action);
         }
-        public static LocalDeclarationStatementPattern LocalDeclarationStatement(IEnumerable<string> modifiers = null, VariableDeclarationPattern declaration = null, Action<LocalDeclarationStatementSyntax> action = null)
+        public static LocalDeclarationStatementPattern LocalDeclarationStatement(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, VariableDeclarationPattern declaration = null, Action<LocalDeclarationStatementSyntax> action = null)
         {
-            return new LocalDeclarationStatementPattern(TokenList(modifiers), declaration, action);
+            return new LocalDeclarationStatementPattern(NodeList(attributeLists), TokenList(modifiers), declaration, action);
         }
         public static VariableDeclarationPattern VariableDeclaration(TypePattern type = null, IEnumerable<VariableDeclaratorPattern> variables = null, Action<VariableDeclarationSyntax> action = null)
         {
@@ -7556,98 +8901,103 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new ParenthesizedVariableDesignationPattern(NodeList(variables), null);
         }
-        public static ExpressionStatementPattern ExpressionStatement(ExpressionPattern expression = null, Action<ExpressionStatementSyntax> action = null)
+        public static ExpressionStatementPattern ExpressionStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern expression = null, Action<ExpressionStatementSyntax> action = null)
         {
-            return new ExpressionStatementPattern(expression, action);
+            return new ExpressionStatementPattern(NodeList(attributeLists), expression, action);
         }
-        public static EmptyStatementPattern EmptyStatement(Action<EmptyStatementSyntax> action = null)
+        public static EmptyStatementPattern EmptyStatement(IEnumerable<AttributeListPattern> attributeLists = null, Action<EmptyStatementSyntax> action = null)
         {
-            return new EmptyStatementPattern(action);
+            return new EmptyStatementPattern(NodeList(attributeLists), action);
         }
-        public static LabeledStatementPattern LabeledStatement(string identifier = null, StatementPattern statement = null, Action<LabeledStatementSyntax> action = null)
+        public static LabeledStatementPattern LabeledStatement(IEnumerable<AttributeListPattern> attributeLists = null, string identifier = null, StatementPattern statement = null, Action<LabeledStatementSyntax> action = null)
         {
-            return new LabeledStatementPattern(identifier, statement, action);
+            return new LabeledStatementPattern(NodeList(attributeLists), identifier, statement, action);
         }
-        public static GotoStatementPattern GotoStatement(SyntaxKind kind = default(SyntaxKind), ExpressionPattern expression = null, Action<GotoStatementSyntax> action = null)
+        public static GotoStatementPattern GotoStatement(IEnumerable<AttributeListPattern> attributeLists = null, SyntaxKind kind = default(SyntaxKind), ExpressionPattern expression = null, Action<GotoStatementSyntax> action = null)
         {
-            return new GotoStatementPattern(kind, expression, action);
+            return new GotoStatementPattern(NodeList(attributeLists), kind, expression, action);
         }
-        public static BreakStatementPattern BreakStatement(Action<BreakStatementSyntax> action = null)
+        public static BreakStatementPattern BreakStatement(IEnumerable<AttributeListPattern> attributeLists = null, Action<BreakStatementSyntax> action = null)
         {
-            return new BreakStatementPattern(action);
+            return new BreakStatementPattern(NodeList(attributeLists), action);
         }
-        public static ContinueStatementPattern ContinueStatement(Action<ContinueStatementSyntax> action = null)
+        public static ContinueStatementPattern ContinueStatement(IEnumerable<AttributeListPattern> attributeLists = null, Action<ContinueStatementSyntax> action = null)
         {
-            return new ContinueStatementPattern(action);
+            return new ContinueStatementPattern(NodeList(attributeLists), action);
         }
-        public static ReturnStatementPattern ReturnStatement(ExpressionPattern expression = null, Action<ReturnStatementSyntax> action = null)
+        public static ReturnStatementPattern ReturnStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern expression = null, Action<ReturnStatementSyntax> action = null)
         {
-            return new ReturnStatementPattern(expression, action);
+            return new ReturnStatementPattern(NodeList(attributeLists), expression, action);
         }
-        public static ThrowStatementPattern ThrowStatement(ExpressionPattern expression = null, Action<ThrowStatementSyntax> action = null)
+        public static ThrowStatementPattern ThrowStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern expression = null, Action<ThrowStatementSyntax> action = null)
         {
-            return new ThrowStatementPattern(expression, action);
+            return new ThrowStatementPattern(NodeList(attributeLists), expression, action);
         }
-        public static YieldStatementPattern YieldStatement(SyntaxKind kind = default(SyntaxKind), ExpressionPattern expression = null, Action<YieldStatementSyntax> action = null)
+        public static YieldStatementPattern YieldStatement(IEnumerable<AttributeListPattern> attributeLists = null, SyntaxKind kind = default(SyntaxKind), ExpressionPattern expression = null, Action<YieldStatementSyntax> action = null)
         {
-            return new YieldStatementPattern(kind, expression, action);
+            return new YieldStatementPattern(NodeList(attributeLists), kind, expression, action);
         }
-        public static WhileStatementPattern WhileStatement(ExpressionPattern condition = null, StatementPattern statement = null, Action<WhileStatementSyntax> action = null)
+        public static WhileStatementPattern WhileStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern condition = null, StatementPattern statement = null, Action<WhileStatementSyntax> action = null)
         {
-            return new WhileStatementPattern(condition, statement, action);
+            return new WhileStatementPattern(NodeList(attributeLists), condition, statement, action);
         }
-        public static DoStatementPattern DoStatement(StatementPattern statement = null, ExpressionPattern condition = null, Action<DoStatementSyntax> action = null)
+        public static DoStatementPattern DoStatement(IEnumerable<AttributeListPattern> attributeLists = null, StatementPattern statement = null, ExpressionPattern condition = null, Action<DoStatementSyntax> action = null)
         {
-            return new DoStatementPattern(statement, condition, action);
+            return new DoStatementPattern(NodeList(attributeLists), statement, condition, action);
         }
-        public static ForStatementPattern ForStatement(VariableDeclarationPattern declaration = null, IEnumerable<ExpressionPattern> initializers = null, ExpressionPattern condition = null, IEnumerable<ExpressionPattern> incrementors = null, StatementPattern statement = null, Action<ForStatementSyntax> action = null)
+        public static ForStatementPattern ForStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern condition = null, IEnumerable<ExpressionPattern> incrementors = null, StatementPattern statement = null, Action<ForStatementSyntax> action = null)
         {
-            return new ForStatementPattern(declaration, NodeList(initializers), condition, NodeList(incrementors), statement, action);
+            return new ForStatementPattern(NodeList(attributeLists), condition, NodeList(incrementors), statement, action);
         }
-        public static ForEachStatementPattern ForEachStatement(ExpressionPattern expression = null, StatementPattern statement = null, TypePattern type = null, string identifier = null, Action<ForEachStatementSyntax> action = null)
+
+        public static ForStatementPattern ForStatement(params ExpressionPattern[] incrementors)
         {
-            return new ForEachStatementPattern(expression, statement, type, identifier, action);
+            return new ForStatementPattern(null, null, NodeList(incrementors), null, null);
         }
-        public static ForEachVariableStatementPattern ForEachVariableStatement(ExpressionPattern expression = null, StatementPattern statement = null, ExpressionPattern variable = null, Action<ForEachVariableStatementSyntax> action = null)
+        public static ForEachStatementPattern ForEachStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern expression = null, StatementPattern statement = null, TypePattern type = null, string identifier = null, Action<ForEachStatementSyntax> action = null)
         {
-            return new ForEachVariableStatementPattern(expression, statement, variable, action);
+            return new ForEachStatementPattern(NodeList(attributeLists), expression, statement, type, identifier, action);
         }
-        public static UsingStatementPattern UsingStatement(VariableDeclarationPattern declaration = null, ExpressionPattern expression = null, StatementPattern statement = null, Action<UsingStatementSyntax> action = null)
+        public static ForEachVariableStatementPattern ForEachVariableStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern expression = null, StatementPattern statement = null, ExpressionPattern variable = null, Action<ForEachVariableStatementSyntax> action = null)
         {
-            return new UsingStatementPattern(declaration, expression, statement, action);
+            return new ForEachVariableStatementPattern(NodeList(attributeLists), expression, statement, variable, action);
         }
-        public static FixedStatementPattern FixedStatement(VariableDeclarationPattern declaration = null, StatementPattern statement = null, Action<FixedStatementSyntax> action = null)
+        public static UsingStatementPattern UsingStatement(IEnumerable<AttributeListPattern> attributeLists = null, StatementPattern statement = null, Action<UsingStatementSyntax> action = null)
         {
-            return new FixedStatementPattern(declaration, statement, action);
+            return new UsingStatementPattern(NodeList(attributeLists), statement, action);
         }
-        public static CheckedStatementPattern CheckedStatement(SyntaxKind kind = default(SyntaxKind), BlockPattern block = null, Action<CheckedStatementSyntax> action = null)
+        public static FixedStatementPattern FixedStatement(IEnumerable<AttributeListPattern> attributeLists = null, VariableDeclarationPattern declaration = null, StatementPattern statement = null, Action<FixedStatementSyntax> action = null)
         {
-            return new CheckedStatementPattern(kind, block, action);
+            return new FixedStatementPattern(NodeList(attributeLists), declaration, statement, action);
         }
-        public static UnsafeStatementPattern UnsafeStatement(BlockPattern block = null, Action<UnsafeStatementSyntax> action = null)
+        public static CheckedStatementPattern CheckedStatement(IEnumerable<AttributeListPattern> attributeLists = null, SyntaxKind kind = default(SyntaxKind), BlockPattern block = null, Action<CheckedStatementSyntax> action = null)
         {
-            return new UnsafeStatementPattern(block, action);
+            return new CheckedStatementPattern(NodeList(attributeLists), kind, block, action);
         }
-        public static LockStatementPattern LockStatement(ExpressionPattern expression = null, StatementPattern statement = null, Action<LockStatementSyntax> action = null)
+        public static UnsafeStatementPattern UnsafeStatement(IEnumerable<AttributeListPattern> attributeLists = null, BlockPattern block = null, Action<UnsafeStatementSyntax> action = null)
         {
-            return new LockStatementPattern(expression, statement, action);
+            return new UnsafeStatementPattern(NodeList(attributeLists), block, action);
         }
-        public static IfStatementPattern IfStatement(ExpressionPattern condition = null, StatementPattern statement = null, ElseClausePattern @else = null, Action<IfStatementSyntax> action = null)
+        public static LockStatementPattern LockStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern expression = null, StatementPattern statement = null, Action<LockStatementSyntax> action = null)
         {
-            return new IfStatementPattern(condition, statement, @else, action);
+            return new LockStatementPattern(NodeList(attributeLists), expression, statement, action);
+        }
+        public static IfStatementPattern IfStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern condition = null, StatementPattern statement = null, ElseClausePattern @else = null, Action<IfStatementSyntax> action = null)
+        {
+            return new IfStatementPattern(NodeList(attributeLists), condition, statement, @else, action);
         }
         public static ElseClausePattern ElseClause(StatementPattern statement = null, Action<ElseClauseSyntax> action = null)
         {
             return new ElseClausePattern(statement, action);
         }
-        public static SwitchStatementPattern SwitchStatement(ExpressionPattern expression = null, IEnumerable<SwitchSectionPattern> sections = null, Action<SwitchStatementSyntax> action = null)
+        public static SwitchStatementPattern SwitchStatement(IEnumerable<AttributeListPattern> attributeLists = null, ExpressionPattern expression = null, IEnumerable<SwitchSectionPattern> sections = null, Action<SwitchStatementSyntax> action = null)
         {
-            return new SwitchStatementPattern(expression, NodeList(sections), action);
+            return new SwitchStatementPattern(NodeList(attributeLists), expression, NodeList(sections), action);
         }
 
         public static SwitchStatementPattern SwitchStatement(params SwitchSectionPattern[] sections)
         {
-            return new SwitchStatementPattern(null, NodeList(sections), null);
+            return new SwitchStatementPattern(null, null, NodeList(sections), null);
         }
         public static SwitchSectionPattern SwitchSection(IEnumerable<SwitchLabelPattern> labels = null, IEnumerable<StatementPattern> statements = null, Action<SwitchSectionSyntax> action = null)
         {
@@ -7665,9 +9015,22 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new DefaultSwitchLabelPattern(action);
         }
-        public static TryStatementPattern TryStatement(BlockPattern block = null, IEnumerable<CatchClausePattern> catches = null, FinallyClausePattern @finally = null, Action<TryStatementSyntax> action = null)
+        public static SwitchExpressionPattern SwitchExpression(ExpressionPattern governingExpression = null, IEnumerable<SwitchExpressionArmPattern> arms = null, Action<SwitchExpressionSyntax> action = null)
         {
-            return new TryStatementPattern(block, NodeList(catches), @finally, action);
+            return new SwitchExpressionPattern(governingExpression, NodeList(arms), action);
+        }
+
+        public static SwitchExpressionPattern SwitchExpression(params SwitchExpressionArmPattern[] arms)
+        {
+            return new SwitchExpressionPattern(null, NodeList(arms), null);
+        }
+        public static SwitchExpressionArmPattern SwitchExpressionArm(PatternPattern pattern = null, WhenClausePattern whenClause = null, ExpressionPattern expression = null, Action<SwitchExpressionArmSyntax> action = null)
+        {
+            return new SwitchExpressionArmPattern(pattern, whenClause, expression, action);
+        }
+        public static TryStatementPattern TryStatement(IEnumerable<AttributeListPattern> attributeLists = null, BlockPattern block = null, IEnumerable<CatchClausePattern> catches = null, FinallyClausePattern @finally = null, Action<TryStatementSyntax> action = null)
+        {
+            return new TryStatementPattern(NodeList(attributeLists), block, NodeList(catches), @finally, action);
         }
         public static CatchClausePattern CatchClause(CatchDeclarationPattern declaration = null, CatchFilterClausePattern filter = null, BlockPattern block = null, Action<CatchClauseSyntax> action = null)
         {
@@ -7693,13 +9056,13 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new ExternAliasDirectivePattern(identifier, action);
         }
-        public static UsingDirectivePattern UsingDirective(NameEqualsPattern alias = null, NamePattern name = null, Action<UsingDirectiveSyntax> action = null)
+        public static UsingDirectivePattern UsingDirective(NamePattern name = null, Action<UsingDirectiveSyntax> action = null)
         {
-            return new UsingDirectivePattern(alias, name, action);
+            return new UsingDirectivePattern(name, action);
         }
-        public static NamespaceDeclarationPattern NamespaceDeclaration(NamePattern name = null, IEnumerable<ExternAliasDirectivePattern> externs = null, IEnumerable<UsingDirectivePattern> usings = null, IEnumerable<MemberDeclarationPattern> members = null, Action<NamespaceDeclarationSyntax> action = null)
+        public static NamespaceDeclarationPattern NamespaceDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, NamePattern name = null, IEnumerable<ExternAliasDirectivePattern> externs = null, IEnumerable<UsingDirectivePattern> usings = null, IEnumerable<MemberDeclarationPattern> members = null, Action<NamespaceDeclarationSyntax> action = null)
         {
-            return new NamespaceDeclarationPattern(name, NodeList(externs), NodeList(usings), NodeList(members), action);
+            return new NamespaceDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), name, NodeList(externs), NodeList(usings), NodeList(members), action);
         }
         public static AttributeListPattern AttributeList(AttributeTargetSpecifierPattern target = null, IEnumerable<AttributePattern> attributes = null, Action<AttributeListSyntax> action = null)
         {
@@ -7727,9 +9090,9 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new AttributeArgumentListPattern(NodeList(arguments), null);
         }
-        public static AttributeArgumentPattern AttributeArgument(NameEqualsPattern nameEquals = null, NameColonPattern nameColon = null, ExpressionPattern expression = null, Action<AttributeArgumentSyntax> action = null)
+        public static AttributeArgumentPattern AttributeArgument(ExpressionPattern expression = null, Action<AttributeArgumentSyntax> action = null)
         {
-            return new AttributeArgumentPattern(nameEquals, nameColon, expression, action);
+            return new AttributeArgumentPattern(expression, action);
         }
         public static NameEqualsPattern NameEquals(IdentifierNamePattern name = null, Action<NameEqualsSyntax> action = null)
         {
@@ -7775,6 +9138,15 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new InterfaceDeclarationPattern(null, null, null, null, null, null, NodeList(members), null);
         }
+        public static RecordDeclarationPattern RecordDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, string identifier = null, BaseListPattern baseList = null, TypeParameterListPattern typeParameterList = null, IEnumerable<TypeParameterConstraintClausePattern> constraintClauses = null, IEnumerable<MemberDeclarationPattern> members = null, ParameterListPattern parameterList = null, Action<RecordDeclarationSyntax> action = null)
+        {
+            return new RecordDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), identifier, baseList, typeParameterList, NodeList(constraintClauses), NodeList(members), parameterList, action);
+        }
+
+        public static RecordDeclarationPattern RecordDeclaration(params MemberDeclarationPattern[] members)
+        {
+            return new RecordDeclarationPattern(null, null, null, null, null, null, NodeList(members), null, null);
+        }
         public static EnumDeclarationPattern EnumDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, string identifier = null, BaseListPattern baseList = null, IEnumerable<EnumMemberDeclarationPattern> members = null, Action<EnumDeclarationSyntax> action = null)
         {
             return new EnumDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), identifier, baseList, NodeList(members), action);
@@ -7788,9 +9160,9 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new DelegateDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), returnType, identifier, typeParameterList, parameterList, NodeList(constraintClauses), action);
         }
-        public static EnumMemberDeclarationPattern EnumMemberDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, string identifier = null, EqualsValueClausePattern equalsValue = null, Action<EnumMemberDeclarationSyntax> action = null)
+        public static EnumMemberDeclarationPattern EnumMemberDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, string identifier = null, EqualsValueClausePattern equalsValue = null, Action<EnumMemberDeclarationSyntax> action = null)
         {
-            return new EnumMemberDeclarationPattern(NodeList(attributeLists), identifier, equalsValue, action);
+            return new EnumMemberDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), identifier, equalsValue, action);
         }
         public static BaseListPattern BaseList(IEnumerable<BaseTypePattern> types = null, Action<BaseListSyntax> action = null)
         {
@@ -7804,6 +9176,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         public static SimpleBaseTypePattern SimpleBaseType(TypePattern type = null, Action<SimpleBaseTypeSyntax> action = null)
         {
             return new SimpleBaseTypePattern(type, action);
+        }
+        public static PrimaryConstructorBaseTypePattern PrimaryConstructorBaseType(TypePattern type = null, ArgumentListPattern argumentList = null, Action<PrimaryConstructorBaseTypeSyntax> action = null)
+        {
+            return new PrimaryConstructorBaseTypePattern(type, argumentList, action);
         }
         public static TypeParameterConstraintClausePattern TypeParameterConstraintClause(IdentifierNamePattern name = null, IEnumerable<TypeParameterConstraintPattern> constraints = null, Action<TypeParameterConstraintClauseSyntax> action = null)
         {
@@ -7821,6 +9197,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new TypeConstraintPattern(type, action);
         }
+        public static DefaultConstraintPattern DefaultConstraint(Action<DefaultConstraintSyntax> action = null)
+        {
+            return new DefaultConstraintPattern(action);
+        }
         public static FieldDeclarationPattern FieldDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, VariableDeclarationPattern declaration = null, Action<FieldDeclarationSyntax> action = null)
         {
             return new FieldDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), declaration, action);
@@ -7833,33 +9213,33 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new ExplicitInterfaceSpecifierPattern(name, action);
         }
-        public static MethodDeclarationPattern MethodDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, BlockPattern body = null, ArrowExpressionClausePattern expressionBody = null, TypePattern returnType = null, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier = null, string identifier = null, TypeParameterListPattern typeParameterList = null, IEnumerable<TypeParameterConstraintClausePattern> constraintClauses = null, Action<MethodDeclarationSyntax> action = null)
+        public static MethodDeclarationPattern MethodDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, TypePattern returnType = null, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier = null, string identifier = null, TypeParameterListPattern typeParameterList = null, IEnumerable<TypeParameterConstraintClausePattern> constraintClauses = null, Action<MethodDeclarationSyntax> action = null)
         {
-            return new MethodDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, body, expressionBody, returnType, explicitInterfaceSpecifier, identifier, typeParameterList, NodeList(constraintClauses), action);
+            return new MethodDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, returnType, explicitInterfaceSpecifier, identifier, typeParameterList, NodeList(constraintClauses), action);
         }
-        public static OperatorDeclarationPattern OperatorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, BlockPattern body = null, ArrowExpressionClausePattern expressionBody = null, TypePattern returnType = null, Action<OperatorDeclarationSyntax> action = null)
+        public static OperatorDeclarationPattern OperatorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, TypePattern returnType = null, Action<OperatorDeclarationSyntax> action = null)
         {
-            return new OperatorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, body, expressionBody, returnType, action);
+            return new OperatorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, returnType, action);
         }
-        public static ConversionOperatorDeclarationPattern ConversionOperatorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, BlockPattern body = null, ArrowExpressionClausePattern expressionBody = null, TypePattern type = null, Action<ConversionOperatorDeclarationSyntax> action = null)
+        public static ConversionOperatorDeclarationPattern ConversionOperatorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, TypePattern type = null, Action<ConversionOperatorDeclarationSyntax> action = null)
         {
-            return new ConversionOperatorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, body, expressionBody, type, action);
+            return new ConversionOperatorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, type, action);
         }
-        public static ConstructorDeclarationPattern ConstructorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, BlockPattern body = null, ArrowExpressionClausePattern expressionBody = null, string identifier = null, ConstructorInitializerPattern initializer = null, Action<ConstructorDeclarationSyntax> action = null)
+        public static ConstructorDeclarationPattern ConstructorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, string identifier = null, ConstructorInitializerPattern initializer = null, Action<ConstructorDeclarationSyntax> action = null)
         {
-            return new ConstructorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, body, expressionBody, identifier, initializer, action);
+            return new ConstructorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, identifier, initializer, action);
         }
         public static ConstructorInitializerPattern ConstructorInitializer(SyntaxKind kind = default(SyntaxKind), ArgumentListPattern argumentList = null, Action<ConstructorInitializerSyntax> action = null)
         {
             return new ConstructorInitializerPattern(kind, argumentList, action);
         }
-        public static DestructorDeclarationPattern DestructorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, BlockPattern body = null, ArrowExpressionClausePattern expressionBody = null, string identifier = null, Action<DestructorDeclarationSyntax> action = null)
+        public static DestructorDeclarationPattern DestructorDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, ParameterListPattern parameterList = null, string identifier = null, Action<DestructorDeclarationSyntax> action = null)
         {
-            return new DestructorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, body, expressionBody, identifier, action);
+            return new DestructorDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), parameterList, identifier, action);
         }
-        public static PropertyDeclarationPattern PropertyDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern type = null, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier = null, AccessorListPattern accessorList = null, string identifier = null, ArrowExpressionClausePattern expressionBody = null, EqualsValueClausePattern initializer = null, Action<PropertyDeclarationSyntax> action = null)
+        public static PropertyDeclarationPattern PropertyDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern type = null, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier = null, AccessorListPattern accessorList = null, string identifier = null, Action<PropertyDeclarationSyntax> action = null)
         {
-            return new PropertyDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), type, explicitInterfaceSpecifier, accessorList, identifier, expressionBody, initializer, action);
+            return new PropertyDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), type, explicitInterfaceSpecifier, accessorList, identifier, action);
         }
         public static ArrowExpressionClausePattern ArrowExpressionClause(ExpressionPattern expression = null, Action<ArrowExpressionClauseSyntax> action = null)
         {
@@ -7869,9 +9249,9 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new EventDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), type, explicitInterfaceSpecifier, accessorList, identifier, action);
         }
-        public static IndexerDeclarationPattern IndexerDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern type = null, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier = null, AccessorListPattern accessorList = null, BracketedParameterListPattern parameterList = null, ArrowExpressionClausePattern expressionBody = null, Action<IndexerDeclarationSyntax> action = null)
+        public static IndexerDeclarationPattern IndexerDeclaration(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern type = null, ExplicitInterfaceSpecifierPattern explicitInterfaceSpecifier = null, AccessorListPattern accessorList = null, BracketedParameterListPattern parameterList = null, Action<IndexerDeclarationSyntax> action = null)
         {
-            return new IndexerDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), type, explicitInterfaceSpecifier, accessorList, parameterList, expressionBody, action);
+            return new IndexerDeclarationPattern(NodeList(attributeLists), TokenList(modifiers), type, explicitInterfaceSpecifier, accessorList, parameterList, action);
         }
         public static AccessorListPattern AccessorList(IEnumerable<AccessorDeclarationPattern> accessors = null, Action<AccessorListSyntax> action = null)
         {
@@ -7882,9 +9262,9 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         {
             return new AccessorListPattern(NodeList(accessors), null);
         }
-        public static AccessorDeclarationPattern AccessorDeclaration(SyntaxKind kind = default(SyntaxKind), IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, BlockPattern body = null, ArrowExpressionClausePattern expressionBody = null, Action<AccessorDeclarationSyntax> action = null)
+        public static AccessorDeclarationPattern AccessorDeclaration(SyntaxKind kind = default(SyntaxKind), IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, Action<AccessorDeclarationSyntax> action = null)
         {
-            return new AccessorDeclarationPattern(kind, NodeList(attributeLists), TokenList(modifiers), body, expressionBody, action);
+            return new AccessorDeclarationPattern(kind, NodeList(attributeLists), TokenList(modifiers), action);
         }
         public static ParameterListPattern ParameterList(IEnumerable<ParameterPattern> parameters = null, Action<ParameterListSyntax> action = null)
         {
@@ -7907,6 +9287,10 @@ namespace Microsoft.CodeAnalysis.CSharp.PatternMatching
         public static ParameterPattern Parameter(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern type = null, string identifier = null, EqualsValueClausePattern @default = null, Action<ParameterSyntax> action = null)
         {
             return new ParameterPattern(NodeList(attributeLists), TokenList(modifiers), type, identifier, @default, action);
+        }
+        public static FunctionPointerParameterPattern FunctionPointerParameter(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern type = null, Action<FunctionPointerParameterSyntax> action = null)
+        {
+            return new FunctionPointerParameterPattern(NodeList(attributeLists), TokenList(modifiers), type, action);
         }
         public static IncompleteMemberPattern IncompleteMember(IEnumerable<AttributeListPattern> attributeLists = null, IEnumerable<string> modifiers = null, TypePattern type = null, Action<IncompleteMemberSyntax> action = null)
         {
