@@ -7,11 +7,12 @@
 <#@ import namespace="System.IO" #>
 <#@ import namespace="System.Collections" #>
 <#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Xml" #>
 <#@ import namespace="System.Xml.Linq" #>
 <#@ import namespace="System.Reflection" #>
 <#
 
-var syntax = XDocument.Load(Host.ResolvePath("Syntax.xml")).Root;
+var syntax = XDocument.Load(Host.ResolvePath("Syntax.xml"), LoadOptions.SetLineInfo).Root;
 
 var skip = new HashSet<string>
 {
@@ -30,6 +31,9 @@ foreach (var element in syntax.Elements())
     else if (element.Name.LocalName != "Node")
         continue;
 
+    IXmlLineInfo info = element;
+    var lineNumber = info.LineNumber;
+
     string name = element.Attribute("Name").Value;
     string baseType = element.Attribute("Base").Value;
 
@@ -43,7 +47,8 @@ foreach (var element in syntax.Elements())
     {
         Name = name,
         BaseType = baseType,
-        Abstract = isAbstract
+        Abstract = isAbstract,
+        LineNumber = lineNumber,
     };
 
     if (element.Elements("Kind").Count() > 1)
@@ -99,6 +104,7 @@ for (int phase = 1; phase < 2; phase++) {
 <# foreach (var type in types) {
     string actionType = !typed ? "Action<" + type.Name + ">" : "Func<TResult, " + type.Name + ", TResult>";
 #>
+    // #<#= type.LineNumber #>
     public <#= type.Abstract ? "abstract " : "" #>partial class <#= GetPatternName(type.Name, genericType) #> : <#= GetPatternName(type.BaseType, genericType) #>
     {
 <# foreach (var field in type.Fields) {
@@ -478,6 +484,7 @@ private class SyntaxType
     public string BaseType { get; set; }
     public bool Abstract { get; set; }
     public List<SyntaxField> Fields { get; private set; }
+    public int LineNumber { get; set; }
 
     public SyntaxType()
     {
